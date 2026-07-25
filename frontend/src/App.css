@@ -1,0 +1,5 @@
+/* App.css — application shell wrapper */
+.app {
+  min-height: 100vh;
+  background: var(--paper);
+}
