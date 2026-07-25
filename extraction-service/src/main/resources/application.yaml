@@ -14,3 +14,9 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+bank:
+  api:
+    base-url: https://core-api.obiebank-sbx.banfico.io
+
+  auth-base-url: https://auth.obiebank-sbx.banfico.io
