@@ -1,207 +1,162 @@
-# Banfico AI Financial Platform
+# 🏦 Banfico — AI Financial Platform
 
-## Executive Summary
+> An intelligent, open-banking financial ecosystem powered by Google Gemini 2.5 Flash, Ollama (`llama3.2`), and distributed microservices.
 
-Banfico is an AI-powered financial management platform built to bridge the gap between complex banking ledgers and actionable financial decisions. Built for modern open-banking ecosystems, Banfico pairs real-time OBIE AISP (Account Information Service Provider) data with Google Gemini 2.5 Flash to automatically audit cashflow, categorize transactions, and generate personalized financial recommendations.
-
-Traditional financial applications present raw data in static tables, requiring manual analysis by the user. Banfico transforms transaction streams into structured insights, providing automated subscription detection, high-yield cash sweep recommendations, and dynamic timeframe analytics.
+Banfico bridges the gap between complex banking ledgers and actionable financial decisions. Built for modern open-banking standards, Banfico pairs real-time **OBIE AISP v3.1** data with hybrid cloud/local LLM AI microservices to audit cashflow, detect spending anomalies, automate savings sweeps, and manage automated task workflows.
 
 ---
 
-## Key Features
+## 🛠️ Architecture & System Design
 
-### 1. Google Gemini 2.5 Flash AI Recommendation Engine
-•⁠  ⁠*Real-Time Spending Analysis*: The platform evaluates income versus outflow ratios, discretionary spending percentages, and net cash surpluses.
-•⁠  ⁠*Automated Actionable Recommendations*: Generates structured, financial recommendations powered by Google Gemini 2.5 Flash:
-  * *High-Yield Vault Auto-Sweeps*: Calculates monthly net surplus and suggests automated sweeps to high-yield savings accounts (4.30% APY).
-  * *Subscription Audits*: Identifies recurring charges and estimates potential monthly savings from consolidating unused streaming services.
-  * *Discretionary Category Caps*: Flags high-variable spending categories (such as dining) and calculates realistic budget limits.
-•⁠  ⁠*Interactive AI Assistant*: A floating chat interface connected to Django REST Framework and Google Gemini for real-time conversational financial analysis.
+Banfico operates as a distributed microservices ecosystem routed via an API Gateway and coordinated by a service discovery registry.
 
-### 2. OBIE AISP Open Banking Integration & Multi-Account Switching
-•⁠  ⁠*Multi-Account Support*: Seamless switching between multiple linked accounts (Everyday Checking, Savings Vault, Bills Account).
-•⁠  ⁠*Live Balance Trend Visualizations*: Real-time SVG sparklines and ApexCharts depicting balance progression and historical trends.
-•⁠  ⁠*Transaction Categorization*: Automated categorization engine for merchant data, pending transactions, and settlement statuses.
+### 1. High-Level Microservices Routing Architecture
 
-### 3. Dynamic Timeframe Analytics Engine
-•⁠  ⁠*Flexible Timeframe Filtering*: Switch between four distinct reporting windows:
-  * This Week (7 days)
-  * This Month (30 days)
-  * Last 90 Days
-  * Year to Date (YTD / 365 days)
-•⁠  ⁠*Synchronized Metric Updates*: Toggling the timeframe dynamically recalculates total outflow, total inflow, category distributions, payment counts, and re-triggers Gemini AI recommendations tailored to the selected window.
+```mermaid
+flowchart TD
+    classDef client fill:#2d3748,stroke:#4a5568,color:#fff,stroke-width:2px;
+    classDef gateway fill:#0f766e,stroke:#14b8a6,color:#fff,stroke-width:2px;
+    classDef registry fill:#c2410c,stroke:#f97316,color:#fff,stroke-width:2px;
+    classDef service fill:#4338ca,stroke:#6366f1,color:#fff,stroke-width:2px;
 
-### 4. Authentication & Compliance Workflow
-•⁠  ⁠*Keycloak OpenID Connect (OIDC)*: Enterprise single sign-on authentication framework.
-•⁠  ⁠*Mandatory Terms & Conditions Modal*: Compliance workflow enforcing agreement to terms prior to authentication, accompanied by an interactive modal detailing account security, Open Banking data privacy, and FDIC insurance disclosures.
+    Client["📱 React 19 Frontend\n(Vite / Glassmorphism UI)"]:::client
+    Gateway["🚪 Spring Cloud Gateway\n(Port 8080)"]:::gateway
+    Eureka["🔍 Eureka Discovery Service\n(Port 8761 / Service Registry)"]:::registry
 
----
+    subgraph Microservices ["Backend Microservices Layer"]
+        DjangoService["🐍 Django REST Service\n(Port 8001 / Chat & Recs)"]:::service
+        McpdoService["☕ mcpdo Spring Boot Service\n(Port 8081 / Spring AI Todo)"]:::service
+        InsightsService["💡 AI Insights Service\n(Port 8002 / Financial AI)"]:::service
+    end
 
-## System Architecture
+    Client --> Gateway
+    Gateway <--> Eureka
 
+    Gateway --> DjangoService
+    Gateway --> McpdoService
+    Gateway --> InsightsService
 
-                          +---------------------------+
-                          |     React 19 Frontend     |
-                          |   (Vite / Framer Motion)  |
-                          +-------------+-------------+
-                                        |
-             +--------------------------+--------------------------+
-             |                                                     |
-             v                                                     v
-+---------------------------+                         +---------------------------+
-|    Django REST Service    |                         |   mcpdo Spring Boot App   |
-|   (Python / Django REST)  |                         |  (Spring AI / Todo micro) |
-+------------+--------------+                         +---------------------------+
-             |
-             v
-+---------------------------+
-|     Google Gemini API     |
-|    (gemini-2.5-flash)     |
-+---------------------------+
+    DjangoService -.- Eureka
+    McpdoService -.- Eureka
+    InsightsService -.- Eureka
+```
 
+### 2. Hybrid AI & External Integration Pipeline
 
----
+```mermaid
+flowchart TD
+    classDef client fill:#2d3748,stroke:#4a5568,color:#fff,stroke-width:2px;
+    classDef service fill:#4338ca,stroke:#6366f1,color:#fff,stroke-width:2px;
+    classDef cloudAI fill:#b45309,stroke:#f59e0b,color:#fff,stroke-width:2px;
+    classDef localAI fill:#a16207,stroke:#eab308,color:#fff,stroke-width:2px;
+    classDef external fill:#991b1b,stroke:#ef4444,color:#fff,stroke-width:2px;
 
-## Project Structure
+    Client["📱 React 19 Frontend"]:::client
+    Django["🐍 Django REST Service"]:::service
+    Mcpdo["☕ mcpdo Spring Boot"]:::service
+    Insights["💡 AI Insights Service"]:::service
 
+    Gemini["☁️ Google Gemini API\n(gemini-2.5-flash)"]:::cloudAI
+    Ollama["🏠 Local Ollama Server\n(llama3.2)"]:::localAI
+    OBIE["🏦 OBIE AISP Sandbox API\n(v3.1 Open Banking)"]:::external
 
+    Client -->|Direct Sync| OBIE
+    Django -->|Cloud LLM Inference| Gemini
+    Insights -->|Cloud LLM Inference| Gemini
+    Mcpdo -->|Local LLM Operations| Ollama
+    Insights -->|Local Anomaly Fallback| Ollama
+```
+
+## 🧰 Tech Stack
+
+| Layer | Technologies / Tools |
+|---|---|
+| Frontend | React 19, Vite, Framer Motion, ApexCharts, Glassmorphism CSS |
+| Microservices Backend | Java 21 (Spring Boot 3.x, Spring AI, Spring Cloud Gateway), Python 3.14 (Django REST Framework) |
+| AI & LLMs | Google Gemini 2.5 Flash (google-genai), Ollama (llama3.2) |
+| Service Mesh & Infra | Netflix Eureka Discovery Service, Docker & Docker Compose |
+| Open Banking Protocols | OBIE AISP v3.1 Standards |
+| Authentication & Access | Keycloak OpenID Connect (OIDC) |
+
+## ✨ Key Features
+
+- **Hybrid AI Engine**: Combines Google Gemini 2.5 Flash for deep financial summary tasks with a local Ollama (llama3.2) instance for local agentic task automation and private fallback analytics.
+- **Smart Vault Auto-Sweeps**: Calculates real-time net surplus across checking accounts and prompts automated transfers into 4.30% APY high-yield savings vaults.
+- **Financial Anomaly & Subscription Audits**: Analyzes recurring transaction streams to flag vendor price increases and unused subscription services.
+- **Dynamic Timeframe Analytics**: Instant filtering across 7-Day, 30-Day, 90-Day, and YTD windows with dynamic metric recalculations.
+- **Open Banking Native**: Direct compatibility with Open Banking Implementation Entity (OBIE) AISP specifications.
+
+## 📁 Repository Structure
+
+```
 ai-finance-platform/
-├── frontend/                     # React 19 + Vite Frontend Application
+├── frontend/                     # React 19 + Vite UI
 │   ├── src/
-│   │   ├── api/                  # API Services (chatApi, recommendationApi, obieApi)
-│   │   ├── components/           # UI Components (ChatModal, Navbar, DashboardNav)
-│   │   └── pages/                # Home, Auth, Dashboard, Transactions, Spending
-├── django-chat-service/          # Django REST Framework + Google Gemini Microservice
-│   ├── chat_app/                 # Views & REST Endpoints (/api/chat/, /api/recommendations/)
-│   ├── config/                   # Django Settings & CORS Configuration
-│   ├── .env                      # API Keys (GEMINI_API_KEY, GEMINI_MODEL)
-│   └── manage.py
-├── mcpdo-main/                   # Spring Boot Automated Todo Microservice
-├── ai-insights-service/          # Financial Insights Microservice
-├── api-gateway/                  # Spring Cloud API Gateway
-├── discovery-service/            # Netflix Eureka Discovery Service
-├── docker-compose.yml            # Multi-container Deployment Setup
+│   │   ├── api/                  # API Services (chatApi, recommendationApi, insightsApi, obieApi)
+│   │   ├── components/           # UI Components (ChatModal, Navbar, InsightsCard)
+│   │   └── pages/                # Dashboard, Spending, Transactions, Insights
+├── django-chat-service/          # Django REST Framework + Gemini 2.5 Chat & Recs Microservice
+├── ai-insights-service/          # Dedicated Financial Intelligence & Anomaly Detection Service
+├── mcpdo-main/                   # Spring Boot + Ollama AI Automated Task Microservice
+├── api-gateway/                  # Spring Cloud API Gateway (Port 8080)
+├── discovery-service/            # Netflix Eureka Service Registry (Port 8761)
+├── docker-compose.yml            # Container Orchestration
 └── README.md
+```
 
-
----
-
-## Technology Stack
-
-•⁠  ⁠*Frontend*: React 19, Vite, Framer Motion, Vanilla CSS (Glassmorphism), ApexCharts
-•⁠  ⁠*Backend Services*: Python 3.14, Django REST Framework, Spring Boot 3.x, Java 21
-•⁠  ⁠*Artificial Intelligence*: Google Gemini 2.5 Flash (⁠ gemini-2.5-flash ⁠), ⁠ google-genai ⁠ SDK
-•⁠  ⁠*Open Banking Protocols*: OBIE AISP v3.1 Standards
-•⁠  ⁠*Authentication*: Keycloak OpenID Connect (OIDC)
-
----
-
-## Installation & Setup
+## 🚀 Getting Started
 
 ### Prerequisites
-•⁠  ⁠Node.js (v18 or higher)
-•⁠  ⁠Python (v3.10 or higher)
 
-### 1. Set Up Django REST Backend
+- **Node.js**: v18+
+- **Python**: v3.10+
+- **Java SDK**: OpenJDK 21
+- **Ollama**: Installed locally with llama3.2 pulled (`ollama pull llama3.2`)
 
-⁠ bash
-# Navigate to Django service directory
+### 1. Run Microservices
+
+**Django REST Service (Port 8001)**
+```bash
 cd django-chat-service
-
-# Configure environment variables in .env
-# Set GEMINI_API_KEY=your_gemini_api_key
-# Set GEMINI_MODEL=gemini-2.5-flash
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Execute migrations
 python manage.py migrate
-
-# Start backend server on port 8001
 python manage.py runserver 8001
- ⁠
+```
 
-### 2. Set Up Frontend Application
+**AI Insights Service (Port 8002)**
+```bash
+cd ai-insights-service
+pip install -r requirements.txt # or ./mvnw spring-boot:run if configured in Java
+python manage.py runserver 8002
+```
 
-⁠ bash
-# Open a new terminal and navigate to frontend directory
+**mcpdo Spring Boot Service (Port 8081)**
+```bash
+cd mcpdo-main
+./mvnw spring-boot:run
+```
+
+### 2. Run Local LLM Server
+
+```bash
+ollama serve
+ollama run llama3.2
+```
+
+### 3. Start Frontend Development Server
+
+```bash
 cd frontend
-
-# Install Node modules
 npm install
-
-# Start Vite development server
 npm run dev
- ⁠
+```
 
-The application will be accessible at ⁠ http://localhost:5176/ ⁠.
+Open [http://localhost:5175](http://localhost:5175) in your browser.
 
----
+## 📜 Regulatory & Disclosures
 
-## API Endpoints
+Banfico is a financial technology demonstration platform. Banking services and deposit disclosures adhere to OBIE AISP open-banking standard specifications.
 
-### 1. AI Chat Assistant Endpoint
-•⁠  ⁠*Path*: ⁠ POST /api/chat/ ⁠
-•⁠  ⁠*Content-Type*: ⁠ application/json ⁠
-•⁠  ⁠*Request Payload*:
-  ⁠ json
-  {
-    "message": "Analyze my recent spending categories"
-  }
-   ⁠
-•⁠  ⁠*Response Payload*:
-  ⁠ json
-  {
-    "reply": "Based on your recent transactions, dining accounts for 22% of outflow...",
-    "model": "gemini-2.5-flash",
-    "status": "success"
-  }
-   ⁠
+## 📄 License
 
-### 2. AI Spending Recommendations Endpoint
-•⁠  ⁠*Path*: ⁠ POST /api/recommendations/ ⁠
-•⁠  ⁠*Content-Type*: ⁠ application/json ⁠
-•⁠  ⁠*Request Payload*:
-  ⁠ json
-  {
-    "timeframe": "This Month (Last 30 Days)",
-    "totalOut": 2450.00,
-    "totalIn": 4500.00,
-    "categories": [
-      { "name": "Housing", "total": 1840 },
-      { "name": "Dining", "total": 612 },
-      { "name": "Subscriptions", "total": 188 }
-    ]
-  }
-   ⁠
-•⁠  ⁠*Response Payload*:
-  ⁠ json
-  {
-    "status": "success",
-    "model": "gemini-2.5-flash",
-    "recommendations": [
-      {
-        "id": "rec-1",
-        "title": "High-Yield Vault Auto-Sweep",
-        "category": "Vault Sweep",
-        "impact": "+$1,000.00/mo",
-        "type": "vault",
-        "summary": "Your net monthly surplus is $2,050. Auto-sweeping $1,000 into your 4.30% APY vault optimizes interest yield.",
-        "actionText": "Set Up Auto-Sweep"
-      }
-    ]
-  }
-   ⁠
-
----
-
-## Regulatory & Disclosures
-
-Banfico is a financial technology platform. Banking services and FDIC deposit insurance (up to $250,000) are provided by partner banking institutions. Open Banking connections adhere to OBIE AISP standards.
-
----
-
-## License
-
-This project is released under the MIT License.
+This project is open source and available under the MIT License.
