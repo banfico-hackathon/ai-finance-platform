@@ -41,31 +41,6 @@ flowchart TD
     InsightsService -.- Eureka
 ```
 
-### 2. Hybrid AI & External Integration Pipeline
-
-```mermaid
-flowchart TD
-    classDef client fill:#2d3748,stroke:#4a5568,color:#fff,stroke-width:2px;
-    classDef service fill:#4338ca,stroke:#6366f1,color:#fff,stroke-width:2px;
-    classDef cloudAI fill:#b45309,stroke:#f59e0b,color:#fff,stroke-width:2px;
-    classDef localAI fill:#a16207,stroke:#eab308,color:#fff,stroke-width:2px;
-    classDef external fill:#991b1b,stroke:#ef4444,color:#fff,stroke-width:2px;
-
-    Client["📱 React 19 Frontend"]:::client
-    Django["🐍 Django REST Service"]:::service
-    Mcpdo["☕ mcpdo Spring Boot"]:::service
-    Insights["💡 AI Insights Service"]:::service
-
-    Gemini["☁️ Google Gemini API\n(gemini-2.5-flash)"]:::cloudAI
-    Ollama["🏠 Local Ollama Server\n(llama3.2)"]:::localAI
-    OBIE["🏦 OBIE AISP Sandbox API\n(v3.1 Open Banking)"]:::external
-
-    Client -->|Direct Sync| OBIE
-    Django -->|Cloud LLM Inference| Gemini
-    Insights -->|Cloud LLM Inference| Gemini
-    Mcpdo -->|Local LLM Operations| Ollama
-    Insights -->|Local Anomaly Fallback| Ollama
-```
 
 ## 🧰 Tech Stack
 
