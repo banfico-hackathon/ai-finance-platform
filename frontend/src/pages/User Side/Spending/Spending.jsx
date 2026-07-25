@@ -1,4 +1,4 @@
-// Spending.jsx — spending analysis derived from the transaction data (categories, daily trend, top merchants)
+// Spending.jsx — spending analysis derived from the transaction data with Date Range filtering
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useInView, useReducedMotion } from "motion/react";
 import DashboardNav from "../../../components/DashboardNav";
@@ -80,8 +80,40 @@ function Bar({ pct, color }) {
 export default function Spending() {
     const reduce = useReducedMotion();
     const all = useMemo(() => getTransactions(), []);
-    const out = useMemo(() => all.filter((t) => t.dir === "out"), [all]);
-    const inc = useMemo(() => all.filter((t) => t.dir === "in"), [all]);
+
+    // Date range filtering state
+    const [range, setRange] = useState("all"); // 'all' | '7d' | '30d' | '90d' | 'ytd' | 'custom'
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+
+    // Filter transactions based on selected date range or custom dates
+    const filteredTx = useMemo(() => {
+        const now = new Date();
+        if (range === "custom") {
+            const start = startDate ? new Date(startDate) : null;
+            const end = endDate ? new Date(endDate) : null;
+            return all.filter((t) => {
+                const d = new Date(t.date || Date.now());
+                if (start && d < start) return false;
+                if (end && d > end) return false;
+                return true;
+            });
+        }
+
+        let limitDays = 0;
+        if (range === "7d") limitDays = 7;
+        if (range === "30d") limitDays = 30;
+        if (range === "90d") limitDays = 90;
+        if (range === "ytd") limitDays = 365;
+
+        if (limitDays === 0) return all;
+
+        const cutoff = new Date(now.getTime() - limitDays * 24 * 60 * 60 * 1000);
+        return all.filter((t) => new Date(t.date || Date.now()) >= cutoff);
+    }, [all, range, startDate, endDate]);
+
+    const out = useMemo(() => filteredTx.filter((t) => t.dir === "out"), [filteredTx]);
+    const inc = useMemo(() => filteredTx.filter((t) => t.dir === "in"), [filteredTx]);
 
     const cats = useMemo(() => byCategory(out), [out]);
     const days = useMemo(() => byDay(out), [out]);
@@ -90,10 +122,11 @@ export default function Spending() {
     const totalOut = out.reduce((s, t) => s + t.amount, 0);
     const totalIn = inc.reduce((s, t) => s + t.amount, 0);
     const avg = out.length ? totalOut / out.length : 0;
-    const largest = out.reduce((m, t) => (t.amount > m.amount ? t : m), out[0]);
+    const largest = out.length > 0 ? out.reduce((m, t) => (t.amount > m.amount ? t : m), out[0]) : { amount: 0, merchant: "None" };
     const maxDay = Math.max(...days.map((d) => d.total), 1);
 
     const period = useMemo(() => {
+        if (!out.length) return { from: null, to: null };
         const sorted = [...out].sort((a, b) => new Date(a.date) - new Date(b.date));
         return { from: sorted[0]?.date, to: sorted[sorted.length - 1]?.date };
     }, [out]);
@@ -109,10 +142,63 @@ export default function Spending() {
             <main className="spend-main">
                 <motion.header className="spend-head" initial="hidden" animate="visible" variants={rise}>
                     <div>
-                        <p className="spend-eyebrow">{ACCOUNT.nickname} · {period.from && `${fmtDate(period.from)} – ${fmtDate(period.to)}`}</p>
+                        <p className="spend-eyebrow">{ACCOUNT.nickname} · {period.from ? `${fmtDate(period.from)} – ${fmtDate(period.to)}` : "No data for selection"}</p>
                         <h1>Spending analysis</h1>
                     </div>
                 </motion.header>
+
+                {/* ===== DATE FILTER TOOLBAR ===== */}
+                <motion.section className="spend-filter-bar" initial="hidden" animate="visible" variants={rise}>
+                    <div className="spend-filter-pills">
+                        {[
+                            { k: "all", label: "All Time" },
+                            { k: "7d", label: "Last 7 Days" },
+                            { k: "30d", label: "Last 30 Days" },
+                            { k: "90d", label: "Last 90 Days" },
+                            { k: "ytd", label: "Year to Date" },
+                            { k: "custom", label: "Custom Range" },
+                        ].map((item) => (
+                            <button
+                                key={item.k}
+                                type="button"
+                                className={`spend-filter-pill${range === item.k ? " is-active" : ""}`}
+                                onClick={() => setRange(item.k)}
+                            >
+                                {item.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {range === "custom" && (
+                        <div className="spend-custom-dates">
+                            <label>
+                                <span>From:</span>
+                                <input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                />
+                            </label>
+                            <label>
+                                <span>To:</span>
+                                <input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                />
+                            </label>
+                            {(startDate || endDate) && (
+                                <button
+                                    type="button"
+                                    className="spend-reset-btn"
+                                    onClick={() => { setStartDate(""); setEndDate(""); }}
+                                >
+                                    Clear Dates
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </motion.section>
 
                 {/* headline stats */}
                 <motion.section className="spend-stats" variants={stagger} {...io}>
@@ -146,17 +232,23 @@ export default function Spending() {
                             <span className="spend-card-sub">{money(totalOut)} out</span>
                         </div>
                         <div className="spend-breakdown-body">
-                            <Donut segments={cats} />
-                            <ul className="spend-legend">
-                                {cats.map((c, i) => (
-                                    <li key={c.name}>
-                                        <span className="spend-legend-dot" style={{ background: SEG_COLORS[i % SEG_COLORS.length] }} aria-hidden="true" />
-                                        <span className="spend-legend-name">{c.name}</span>
-                                        <span className="spend-legend-pct">{c.pct}%</span>
-                                        <span className="spend-legend-val">{money(c.total)}</span>
-                                    </li>
-                                ))}
-                            </ul>
+                            {cats.length === 0 ? (
+                                <p style={{ color: "var(--slate)", padding: "20px 0" }}>No transactions in date range.</p>
+                            ) : (
+                                <>
+                                    <Donut segments={cats} />
+                                    <ul className="spend-legend">
+                                        {cats.map((c, i) => (
+                                            <li key={c.name}>
+                                                <span className="spend-legend-dot" style={{ background: SEG_COLORS[i % SEG_COLORS.length] }} aria-hidden="true" />
+                                                <span className="spend-legend-name">{c.name}</span>
+                                                <span className="spend-legend-pct">{c.pct}%</span>
+                                                <span className="spend-legend-val">{money(c.total)}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </>
+                            )}
                         </div>
                     </motion.section>
 
@@ -167,21 +259,25 @@ export default function Spending() {
                             <span className="spend-card-sub">{days.length} days</span>
                         </div>
                         <div className="spend-days">
-                            {days.map((d) => (
-                                <div className="spend-day" key={d.date}>
-                                    <div className="spend-day-track">
-                                        <motion.div
-                                            className="spend-day-fill"
-                                            initial={{ height: 0 }}
-                                            whileInView={{ height: `${(d.total / maxDay) * 100}%` }}
-                                            viewport={{ once: true, margin: "-40px" }}
-                                            transition={{ duration: reduce ? 0 : 0.8, ease: EASE }}
-                                        />
+                            {days.length === 0 ? (
+                                <p style={{ color: "var(--slate)", padding: "20px 0" }}>No daily spend data for selected timeframe.</p>
+                            ) : (
+                                days.map((d) => (
+                                    <div className="spend-day" key={d.date}>
+                                        <div className="spend-day-track">
+                                            <motion.div
+                                                className="spend-day-fill"
+                                                initial={{ height: 0 }}
+                                                whileInView={{ height: `${(d.total / maxDay) * 100}%` }}
+                                                viewport={{ once: true, margin: "-40px" }}
+                                                transition={{ duration: reduce ? 0 : 0.8, ease: EASE }}
+                                            />
+                                        </div>
+                                        <span className="spend-day-val">{money(d.total)}</span>
+                                        <span className="spend-day-lab">{fmtDate(d.date)}</span>
                                     </div>
-                                    <span className="spend-day-val">{money(d.total)}</span>
-                                    <span className="spend-day-lab">{fmtDate(d.date)}</span>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
                     </motion.section>
                 </div>
@@ -192,18 +288,22 @@ export default function Spending() {
                         <h2>Where it went</h2>
                         <span className="spend-card-sub">share of outgoings</span>
                     </div>
-                    <ul className="spend-cat-list">
-                        {cats.map((c, i) => (
-                            <li className="spend-cat" key={c.name}>
-                                <div className="spend-cat-top">
-                                    <span className="spend-cat-name">{c.name}</span>
-                                    <span className="spend-cat-val">{money(c.total)} <span className="spend-cat-pct">· {c.pct}%</span></span>
-                                </div>
-                                <Bar pct={c.pct} color={SEG_COLORS[i % SEG_COLORS.length]} />
-                                <span className="spend-cat-meta">{c.count} {c.count === 1 ? "payment" : "payments"} · avg {money(c.total / c.count)}</span>
-                            </li>
-                        ))}
-                    </ul>
+                    {cats.length === 0 ? (
+                        <p style={{ color: "var(--slate)", padding: "20px" }}>No category breakdown available for selected date filter.</p>
+                    ) : (
+                        <ul className="spend-cat-list">
+                            {cats.map((c, i) => (
+                                <li className="spend-cat" key={c.name}>
+                                    <div className="spend-cat-top">
+                                        <span className="spend-cat-name">{c.name}</span>
+                                        <span className="spend-cat-val">{money(c.total)} <span className="spend-cat-pct">· {c.pct}%</span></span>
+                                    </div>
+                                    <Bar pct={c.pct} color={SEG_COLORS[i % SEG_COLORS.length]} />
+                                    <span className="spend-cat-meta">{c.count} {c.count === 1 ? "payment" : "payments"} · avg {money(c.total / c.count)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </motion.section>
 
                 {/* top merchants */}
@@ -212,19 +312,23 @@ export default function Spending() {
                         <h2>Top payees</h2>
                         <span className="spend-card-sub">by amount</span>
                     </div>
-                    <ol className="spend-merchants">
-                        {merchants.map((m, i) => (
-                            <li className="spend-merchant" key={m.name}>
-                                <span className="spend-merchant-rank">{String(i + 1).padStart(2, "0")}</span>
-                                <span className="spend-merchant-badge" aria-hidden="true">{m.name[0]}</span>
-                                <span className="spend-merchant-main">
-                                    <span className="spend-merchant-name">{m.name}</span>
-                                    <span className="spend-merchant-sub">{m.cat} · {m.count} {m.count === 1 ? "payment" : "payments"}</span>
-                                </span>
-                                <span className="spend-merchant-val">{money(m.total)}</span>
-                            </li>
-                        ))}
-                    </ol>
+                    {merchants.length === 0 ? (
+                        <p style={{ color: "var(--slate)", padding: "20px" }}>No payees found for selected date filter.</p>
+                    ) : (
+                        <ol className="spend-merchants">
+                            {merchants.map((m, i) => (
+                                <li className="spend-merchant" key={m.name}>
+                                    <span className="spend-merchant-rank">{String(i + 1).padStart(2, "0")}</span>
+                                    <span className="spend-merchant-badge" aria-hidden="true">{m.name[0]}</span>
+                                    <span className="spend-merchant-main">
+                                        <span className="spend-merchant-name">{m.name}</span>
+                                        <span className="spend-merchant-sub">{m.cat} · {m.count} {m.count === 1 ? "payment" : "payments"}</span>
+                                    </span>
+                                    <span className="spend-merchant-val">{money(m.total)}</span>
+                                </li>
+                            ))}
+                        </ol>
+                    )}
                 </motion.section>
             </main>
         </div>

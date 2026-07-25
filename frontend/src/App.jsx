@@ -7,6 +7,7 @@ import Auth from './pages/Auth/Auth';
 import Dashboard from './pages/User Side/Dashboard/Dashboard';
 import Transactions from './pages/User Side/Transactions/Transactions';
 import Spending from './pages/User Side/Spending/Spending';
+import ChatModal from './components/ChatModal';
 import './App.css';
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
               <Route path="/spending" element={<Spending />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            <ChatModal />
           </div>
         </BrowserRouter>
       </AccountProvider>

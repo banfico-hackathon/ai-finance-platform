@@ -59,6 +59,7 @@ export default function Transactions() {
     const [type, setType] = useState("all");
     const [status, setStatus] = useState("all");
     const [cat, setCat] = useState("all");
+    const [range, setRange] = useState("all");
     const [sort, setSort] = useState("newest");
     const [openId, setOpenId] = useState(null);
 
@@ -66,12 +67,22 @@ export default function Transactions() {
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
+        const now = new Date();
+        let limitDays = 0;
+        if (range === "7d") limitDays = 7;
+        if (range === "30d") limitDays = 30;
+        if (range === "90d") limitDays = 90;
+        if (range === "ytd") limitDays = 365;
+
+        const cutoff = limitDays > 0 ? new Date(now.getTime() - limitDays * 24 * 60 * 60 * 1000) : null;
+
         let list = all.filter((t) => {
             const mq = !q || t.merchant.toLowerCase().includes(q) || t.info.toLowerCase().includes(q) || t.reference.toLowerCase().includes(q);
             const mt = type === "all" || t.dir === type;
             const ms = status === "all" || t.status === status;
             const mc = cat === "all" || t.cat === cat;
-            return mq && mt && ms && mc;
+            const mr = !cutoff || new Date(t.date || Date.now()) >= cutoff;
+            return mq && mt && ms && mc && mr;
         });
         list = [...list].sort((a, b) => {
             if (sort === "newest") return new Date(b.date) - new Date(a.date);
@@ -80,7 +91,8 @@ export default function Transactions() {
             return a.amount - b.amount;
         });
         return list;
-    }, [all, query, type, status, cat, sort]);
+    }, [all, query, type, status, cat, range, sort]);
+
 
     const totalIn = filtered.filter((t) => t.dir === "in").reduce((s, t) => s + t.amount, 0);
     const totalOut = filtered.filter((t) => t.dir === "out").reduce((s, t) => s + t.amount, 0);
@@ -152,11 +164,20 @@ export default function Transactions() {
                         ))}
                     </div>
 
+                    <select className="txns-select" value={range} onChange={(e) => setRange(e.target.value)} aria-label="Date Range">
+                        <option value="all">All Dates</option>
+                        <option value="7d">Last 7 Days</option>
+                        <option value="30d">Last 30 Days (This Month)</option>
+                        <option value="90d">Last 90 Days</option>
+                        <option value="ytd">Year to Date</option>
+                    </select>
+
                     <select className="txns-select" value={cat} onChange={(e) => setCat(e.target.value)} aria-label="Category">
                         {categories.map((c) => (
                             <option key={c} value={c}>{c === "all" ? "All categories" : c}</option>
                         ))}
                     </select>
+
 
                     <select className="txns-select" value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Status">
                         {STATUSES.map((s) => (
