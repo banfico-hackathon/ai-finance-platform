@@ -1,56 +1,519 @@
-// bankingData.js — single source of truth for account, balance, and transaction mock data (OBIE-shaped) plus derivation helpers
-// Direction is now driven by CreditDebitIndicator: outgoing bills are "Debit", incoming money is "Credit".
+// Bankingdata.js — OBIE AISP v4.0 Mappers, Data Derivations, and Per-Account Fallbacks
 
-export const ACCOUNT = {
-  accountId: "6a62009ac47905bfc3f196cd",
-  nickname: "Bills",
-  description: "For paying bills",
-  holder: "Nivas Ganesan",
-  currency: "GBP",
-  category: "Personal",
-  typeCode: "CACC", // current account
-  status: "Enabled",
-  openingDate: "2002-01-05",
-  identification: "68130781747936", // sort code (6) + account number (8)
-  servicer: "ServicerName",
-};
+/* ---------------------------------------------------------------------------
+   Sample OBIE AISP Data (from user's real OBIE AISP payloads)
+--------------------------------------------------------------------------- */
 
-export const BALANCE = {
-  current: 329.06, // CLAV
-  available: 401.0, // credit line "Available"
-  preAgreed: 501.0, // credit line "Pre-Agreed"
-  totalValue: 720.39,
-  local: { amount: 400.0, currency: "USD" },
-  currency: "GBP",
-  asOf: "2026-07-25T06:55:38.237Z",
-};
-
-// CreditDebitIndicator corrected to reflect the real money flow.
-export const RAW_TX = [
-  { id: "…19cb8", reference: "Ref 514012092412", info: "Paid the gas bill", merchant: "Lubowitz, Krajcik and Olson", mcc: "1711", amount: 284.58, currency: "GBP", date: "2026-07-25T06:55:38.237Z", valueDate: "2026-07-25T06:55:38.237Z", indicator: "Debit", status: "PDNG", balanceAfter: 613.64, card: "MasterCard", auth: "PIN", txnCode: "IssuedCreditTransfer / AutomaticTransfer", propCode: "Transfer · CoreBank", purpose: "CASH" },
-  { id: "…19855", reference: "Ref 090920347150", info: "Utility bill payment", merchant: "Shanahan LLC", mcc: "1711", amount: 449.99, currency: "GBP", date: "2026-07-25T05:37:18.328Z", valueDate: "2026-07-25T05:37:18.328Z", indicator: "Debit", status: "PDNG", balanceAfter: 779.05, card: "MasterCard", auth: "PIN", txnCode: "IssuedCreditTransfer / AutomaticTransfer", propCode: "Transfer · CoreBank", purpose: "CASH" },
-  { id: "…19854", reference: "Ref 494352222219", info: "Utility bill payment", merchant: "Stiedemann, Spinka and Nolan", mcc: "1711", amount: 436.39, currency: "GBP", date: "2026-07-25T05:36:22.517Z", valueDate: "2026-07-25T05:36:22.517Z", indicator: "Debit", status: "PDNG", balanceAfter: 765.45, card: "MasterCard", auth: "PIN", txnCode: "IssuedCreditTransfer / AutomaticTransfer", propCode: "Transfer · CoreBank", purpose: "CASH" },
-  { id: "…19848", reference: "Ref 573095832327", info: "Online subscription", merchant: "Schowalter Group", mcc: "1711", amount: 342.9, currency: "GBP", date: "2026-07-25T05:32:51.471Z", valueDate: "2026-07-25T05:32:51.471Z", indicator: "Debit", status: "PDNG", balanceAfter: 671.96, card: "MasterCard", auth: "PIN", txnCode: "IssuedCreditTransfer / AutomaticTransfer", propCode: "Transfer · CoreBank", purpose: "CASH" },
-  { id: "…19786", reference: "Ref 611024897057", info: "Monthly rent transfer", merchant: "Kuhlman Inc", mcc: "1711", amount: 339.12, currency: "GBP", date: "2026-07-24T09:30:55.667Z", valueDate: "2026-07-24T09:30:55.667Z", indicator: "Debit", status: "PDNG", balanceAfter: 668.18, card: "MasterCard", auth: "PIN", txnCode: "IssuedCreditTransfer / AutomaticTransfer", propCode: "Transfer · CoreBank", purpose: "CASH" },
-  { id: "…19780", reference: "Ref 306371566574", info: "Paid the gas bill", merchant: "Hansen, Kshlerin and Koelpin", mcc: "1711", amount: 387.98, currency: "GBP", date: "2026-07-24T06:14:10.537Z", valueDate: "2026-07-24T06:14:10.537Z", indicator: "Debit", status: "PDNG", balanceAfter: 717.04, card: "MasterCard", auth: "PIN", txnCode: "IssuedCreditTransfer / AutomaticTransfer", propCode: "Transfer · CoreBank", purpose: "CASH" },
-  { id: "…1977a", reference: "Ref 368994284904", info: "Utility bill payment", merchant: "Baumbach, Anderson and Kiehn", mcc: "1711", amount: 140.78, currency: "GBP", date: "2026-07-23T12:41:33.096Z", valueDate: "2026-07-23T12:41:33.096Z", indicator: "Debit", status: "PDNG", balanceAfter: 469.84, card: "MasterCard", auth: "PIN", txnCode: "IssuedCreditTransfer / AutomaticTransfer", propCode: "Transfer · CoreBank", purpose: "CASH" },
-  { id: "…19779", reference: "Ref 055362407406", info: "Grocery shopping", merchant: "Schiller - Larkin", mcc: "1711", amount: 415.11, currency: "GBP", date: "2026-07-23T12:41:32.591Z", valueDate: "2026-07-23T12:41:32.591Z", indicator: "Debit", status: "PDNG", balanceAfter: 744.17, card: "MasterCard", auth: "PIN", txnCode: "IssuedCreditTransfer / AutomaticTransfer", propCode: "Transfer · CoreBank", purpose: "CASH" },
-  { id: "…19778", reference: "Ref 448862676998", info: "Monthly rent transfer", merchant: "Stokes Inc", mcc: "1711", amount: 327.42, currency: "GBP", date: "2026-07-23T12:41:32.092Z", valueDate: "2026-07-23T12:41:32.092Z", indicator: "Debit", status: "PDNG", balanceAfter: 656.48, card: "MasterCard", auth: "PIN", txnCode: "IssuedCreditTransfer / AutomaticTransfer", propCode: "Transfer · CoreBank", purpose: "CASH" },
-  { id: "…19777", reference: "Ref 332529325012", info: "Online subscription", merchant: "Jacobs, Donnelly and Wilderman", mcc: "1711", amount: 142.43, currency: "GBP", date: "2026-07-23T12:41:31.593Z", valueDate: "2026-07-23T12:41:31.593Z", indicator: "Debit", status: "PDNG", balanceAfter: 471.49, card: "MasterCard", auth: "PIN", txnCode: "IssuedCreditTransfer / AutomaticTransfer", propCode: "Transfer · CoreBank", purpose: "CASH" },
-  { id: "…19776", reference: "Ref 328681292410", info: "Online subscription", merchant: "Braun, Lesch and Langworth", mcc: "1711", amount: 430.44, currency: "GBP", date: "2026-07-23T12:41:30.307Z", valueDate: "2026-07-23T12:41:30.307Z", indicator: "Debit", status: "PDNG", balanceAfter: 759.5, card: "MasterCard", auth: "PIN", txnCode: "IssuedCreditTransfer / AutomaticTransfer", propCode: "Transfer · CoreBank", purpose: "CASH" },
-  { id: "…19775", reference: "Ref 782201304208", info: "Paid the gas bill", merchant: "Wolff - Murphy", mcc: "1711", amount: 57.44, currency: "GBP", date: "2026-07-23T12:32:09.323Z", valueDate: "2026-07-23T12:32:09.323Z", indicator: "Debit", status: "PDNG", balanceAfter: 386.5, card: "MasterCard", auth: "PIN", txnCode: "IssuedCreditTransfer / AutomaticTransfer", propCode: "Transfer · CoreBank", purpose: "CASH" },
-  { id: "…196d2", reference: "Ref 2", info: "Cash from Aubrey", merchant: "Aubrey", mcc: "5874", amount: 20.0, currency: "GBP", date: "2017-04-05T10:43:07.000Z", valueDate: "2017-04-05T10:45:22.000Z", indicator: "Credit", status: "BOOK", balanceAfter: 230.0, card: "VISA", auth: "Contactless", txnCode: "ReceivedCreditTransfer / DomesticCreditTransfer", propCode: "Transfer · AlphaBank", purpose: "RETL" },
+export const FALLBACK_ACCOUNTS_DATA = [
+  {
+    AccountId: "6a62009ac47905bfc3f196cd",
+    InternationalAccount: false,
+    Status: "Enabled",
+    StatusUpdateDateTime: "2019-01-01T06:06:06.000Z",
+    Currency: "GBP",
+    AccountCategory: "Personal",
+    AccountTypeCode: "CACC",
+    Description: "For paying bills",
+    Nickname: "Bills",
+    OpeningDate: "2002-01-05T00:00:00.000Z",
+    Account: [
+      {
+        LEI: "9193001QZMP2PQT4AK86",
+        Name: "NIVASGANESAN",
+        SchemeName: "UK.OBIE.SortCodeAccountNumber",
+        Identification: "68130781747936",
+        SecondaryIdentification: "06307",
+      },
+    ],
+    Servicer: { Name: "ServicerName" },
+  },
+  {
+    AccountId: "6a62009ac47905bfc3f196db",
+    InternationalAccount: false,
+    Status: "Enabled",
+    Currency: "GBP",
+    AccountCategory: "Personal",
+    AccountTypeCode: "CACC",
+    Description: "For household expenses",
+    Nickname: "Household",
+    OpeningDate: "2002-01-05T00:00:00.000Z",
+    Account: [
+      {
+        Name: "NIVASGANESAN",
+        SchemeName: "UK.OBIE.SortCodeAccountNumber",
+        Identification: "44771563636688",
+        SecondaryIdentification: "32463",
+      },
+    ],
+    Servicer: { Name: "ServicerName" },
+  },
+  {
+    AccountId: "6a62009bc47905bfc3f196e9",
+    InternationalAccount: false,
+    Status: "Enabled",
+    Currency: "GBP",
+    AccountCategory: "Personal",
+    AccountTypeCode: "CACC",
+    Description: "Personal savings account",
+    Nickname: "Savings",
+    OpeningDate: "2002-01-05T00:00:00.000Z",
+    Account: [
+      {
+        Name: "NIVASGANESAN",
+        SchemeName: "UK.OBIE.SortCodeAccountNumber",
+        Identification: "12540159027301",
+        SecondaryIdentification: "41637",
+      },
+    ],
+    Servicer: { Name: "ServicerName" },
+  },
+  {
+    AccountId: "6a6330b9c47905bfc3f19781",
+    InternationalAccount: false,
+    Status: "Enabled",
+    Currency: "GBP",
+    AccountCategory: "Personal",
+    AccountTypeCode: "CACC",
+    Nickname: "Emergency",
+    OpeningDate: "2026-07-24T09:30:33.233Z",
+    Account: [
+      {
+        Name: "Blake Beahan",
+        SchemeName: "UK.OBIE.SortCodeAccountNumber",
+        Identification: "75755381227370",
+        SecondaryIdentification: "17204",
+      },
+    ],
+    Servicer: { Name: "ServicerNameSample" },
+  },
+  {
+    AccountId: "6a647202c47905bfc3f19e4c",
+    InternationalAccount: false,
+    Status: "Enabled",
+    Currency: "GBP",
+    AccountCategory: "Personal",
+    AccountTypeCode: "CACC",
+    Nickname: "Holiday Fund",
+    OpeningDate: "2026-07-25T08:21:22.639Z",
+    Account: [
+      {
+        Name: "Maria Olson",
+        SchemeName: "UK.OBIE.SortCodeAccountNumber",
+        Identification: "67250740337826",
+        SecondaryIdentification: "59852",
+      },
+    ],
+    Servicer: { Name: "ServicerNameSample" },
+  },
+  {
+    AccountId: "6a647fb1c47905bfc3f19f8b",
+    InternationalAccount: false,
+    Status: "Enabled",
+    Currency: "GBP",
+    AccountCategory: "Personal",
+    AccountTypeCode: "CACC",
+    Nickname: "Rainy Day",
+    OpeningDate: "2026-07-25T09:19:46.302Z",
+    Account: [
+      {
+        Name: "Roy Rosenbaum Sr.",
+        SchemeName: "UK.OBIE.SortCodeAccountNumber",
+        Identification: "08875897133200",
+        SecondaryIdentification: "49497",
+      },
+    ],
+    Servicer: { Name: "ServicerNameSample" },
+  },
 ];
 
-/* ---------------- formatters ---------------- */
+// Per-account distinct balances
+export function getAccountBalanceFallback(id = "") {
+  let baseCurrent = 329.06;
+  let baseAvailable = 401.0;
+  let basePreAgreed = 501.0;
+  let baseTotal = 720.39;
+  let baseLocal = 400.0;
+
+  if (id.includes("db")) {
+    // Household
+    baseCurrent = 1840.5;
+    baseAvailable = 2500.0;
+    basePreAgreed = 500.0;
+    baseTotal = 2340.5;
+    baseLocal = 2200.0;
+  } else if (id.includes("e9")) {
+    // Savings
+    baseCurrent = 14250.0;
+    baseAvailable = 14250.0;
+    basePreAgreed = 0.0;
+    baseTotal = 14250.0;
+    baseLocal = 17500.0;
+  } else if (id.includes("781")) {
+    // Emergency
+    baseCurrent = 5600.0;
+    baseAvailable = 6000.0;
+    basePreAgreed = 1000.0;
+    baseTotal = 6600.0;
+    baseLocal = 7000.0;
+  } else if (id.includes("e4c")) {
+    // Holiday Fund
+    baseCurrent = 2100.8;
+    baseAvailable = 2100.8;
+    basePreAgreed = 300.0;
+    baseTotal = 2400.8;
+    baseLocal = 2650.0;
+  } else if (id.includes("f8b")) {
+    // Rainy Day
+    baseCurrent = 4897.96;
+    baseAvailable = 5299.96;
+    basePreAgreed = 500.0;
+    baseTotal = 5397.96;
+    baseLocal = 6100.0;
+  }
+
+  return {
+    AccountId: id,
+    CreditDebitIndicator: "Credit",
+    Type: "CLAV",
+    DateTime: new Date().toISOString(),
+    CreditLine: [
+      { Type: "Available", Amount: { Amount: baseAvailable.toFixed(2), Currency: "GBP" } },
+      { Type: "Pre-Agreed", Amount: { Amount: basePreAgreed.toFixed(2), Currency: "GBP" } },
+    ],
+    Amount: { Amount: baseCurrent.toFixed(2), Currency: "GBP", SubType: "BCUR" },
+    LocalAmount: { Amount: baseLocal.toFixed(2), Currency: "USD", SubType: "LCUR" },
+    TotalValue: { Amount: baseTotal.toFixed(2), Currency: "GBP" },
+  };
+}
+
+// Per-account distinct transactions
+export function getAccountTxFallback(id = "") {
+  if (id.includes("db")) {
+    // Household transactions
+    return [
+      {
+        TransactionId: "tx_h1",
+        AccountId: id,
+        TransactionReference: "Ref HH8847192",
+        CreditDebitIndicator: "Debit",
+        Status: "BOOK",
+        BookingDateTime: "2026-07-25T08:15:00.000Z",
+        ValueDateTime: "2026-07-25T08:15:00.000Z",
+        TransactionInformation: "Sainsbury Supermarket",
+        Amount: { Amount: "124.50", Currency: "GBP" },
+        BankTransactionCode: { Code: "MerchantPayment", SubCode: "CardPayment" },
+        ProprietaryBankTransactionCode: { Code: "Purchase", Issuer: "CoreBank" },
+        Balance: { Type: "CLAV", Amount: { Amount: "1840.50", Currency: "GBP" }, CreditDebitIndicator: "Credit" },
+        MerchantDetails: { MerchantName: "Sainsbury's Stores", MerchantCategoryCode: "5411" },
+        CardInstrument: { CardSchemeName: "Visa Debit", AuthorisationType: "PIN" },
+      },
+      {
+        TransactionId: "tx_h2",
+        AccountId: id,
+        TransactionReference: "Ref HH8847193",
+        CreditDebitIndicator: "Debit",
+        Status: "BOOK",
+        BookingDateTime: "2026-07-24T14:20:00.000Z",
+        ValueDateTime: "2026-07-24T14:20:00.000Z",
+        TransactionInformation: "British Gas Monthly Direct Debit",
+        Amount: { Amount: "185.00", Currency: "GBP" },
+        BankTransactionCode: { Code: "DirectDebit", SubCode: "UtilityPayment" },
+        ProprietaryBankTransactionCode: { Code: "DirectDebit", Issuer: "CoreBank" },
+        Balance: { Type: "CLAV", Amount: { Amount: "1965.00", Currency: "GBP" }, CreditDebitIndicator: "Credit" },
+        MerchantDetails: { MerchantName: "British Gas", MerchantCategoryCode: "4900" },
+        CardInstrument: { CardSchemeName: "Direct Debit", AuthorisationType: "Automatic" },
+      },
+      {
+        TransactionId: "tx_h3",
+        AccountId: id,
+        TransactionReference: "Ref HH8847194",
+        CreditDebitIndicator: "Credit",
+        Status: "BOOK",
+        BookingDateTime: "2026-07-23T09:00:00.000Z",
+        ValueDateTime: "2026-07-23T09:00:00.000Z",
+        TransactionInformation: "Household Contribution Transfer",
+        Amount: { Amount: "500.00", Currency: "GBP" },
+        BankTransactionCode: { Code: "ReceivedCreditTransfer", SubCode: "DomesticCreditTransfer" },
+        ProprietaryBankTransactionCode: { Code: "Transfer", Issuer: "CoreBank" },
+        Balance: { Type: "CLAV", Amount: { Amount: "2150.00", Currency: "GBP" }, CreditDebitIndicator: "Credit" },
+        MerchantDetails: { MerchantName: "Partner Contribution", MerchantCategoryCode: "5874" },
+        CardInstrument: { CardSchemeName: "Faster Payments", AuthorisationType: "Online" },
+      },
+    ];
+  }
+
+  if (id.includes("e9")) {
+    // Savings transactions
+    return [
+      {
+        TransactionId: "tx_s1",
+        AccountId: id,
+        TransactionReference: "Ref SV9920141",
+        CreditDebitIndicator: "Credit",
+        Status: "BOOK",
+        BookingDateTime: "2026-07-25T01:00:00.000Z",
+        ValueDateTime: "2026-07-25T01:00:00.000Z",
+        TransactionInformation: "Monthly Savings Interest Credit",
+        Amount: { Amount: "42.80", Currency: "GBP" },
+        BankTransactionCode: { Code: "InterestCredit", SubCode: "SavingsInterest" },
+        ProprietaryBankTransactionCode: { Code: "Interest", Issuer: "CoreBank" },
+        Balance: { Type: "CLAV", Amount: { Amount: "14250.00", Currency: "GBP" }, CreditDebitIndicator: "Credit" },
+        MerchantDetails: { MerchantName: "Banfico Savings Interest", MerchantCategoryCode: "6012" },
+        CardInstrument: { CardSchemeName: "Internal Credit", AuthorisationType: "System" },
+      },
+      {
+        TransactionId: "tx_s2",
+        AccountId: id,
+        TransactionReference: "Ref SV9920142",
+        CreditDebitIndicator: "Credit",
+        Status: "BOOK",
+        BookingDateTime: "2026-07-01T10:00:00.000Z",
+        ValueDateTime: "2026-07-01T10:00:00.000Z",
+        TransactionInformation: "Payday Auto Savings Deposit",
+        Amount: { Amount: "500.00", Currency: "GBP" },
+        BankTransactionCode: { Code: "ReceivedCreditTransfer", SubCode: "DomesticCreditTransfer" },
+        ProprietaryBankTransactionCode: { Code: "Transfer", Issuer: "CoreBank" },
+        Balance: { Type: "CLAV", Amount: { Amount: "14207.20", Currency: "GBP" }, CreditDebitIndicator: "Credit" },
+        MerchantDetails: { MerchantName: "Auto Savings Deposit", MerchantCategoryCode: "6012" },
+        CardInstrument: { CardSchemeName: "Faster Payments", AuthorisationType: "Online" },
+      },
+    ];
+  }
+
+  if (id.includes("781")) {
+    // Emergency transactions
+    return [
+      {
+        TransactionId: "tx_e1",
+        AccountId: id,
+        TransactionReference: "Ref EM3310491",
+        CreditDebitIndicator: "Debit",
+        Status: "BOOK",
+        BookingDateTime: "2026-07-20T11:45:00.000Z",
+        ValueDateTime: "2026-07-20T11:45:00.000Z",
+        TransactionInformation: "Auto Repair Emergency Service",
+        Amount: { Amount: "320.00", Currency: "GBP" },
+        BankTransactionCode: { Code: "IssuedCreditTransfer", SubCode: "AutomaticTransfer" },
+        ProprietaryBankTransactionCode: { Code: "Transfer", Issuer: "CoreBank" },
+        Balance: { Type: "CLAV", Amount: { Amount: "5600.00", Currency: "GBP" }, CreditDebitIndicator: "Credit" },
+        MerchantDetails: { MerchantName: "Kwik Fit Auto Repair", MerchantCategoryCode: "7538" },
+        CardInstrument: { CardSchemeName: "Visa Debit", AuthorisationType: "PIN" },
+      },
+    ];
+  }
+
+  if (id.includes("e4c")) {
+    // Holiday Fund transactions
+    return [
+      {
+        TransactionId: "tx_hf1",
+        AccountId: id,
+        TransactionReference: "Ref HF7710928",
+        CreditDebitIndicator: "Debit",
+        Status: "BOOK",
+        BookingDateTime: "2026-07-22T16:30:00.000Z",
+        ValueDateTime: "2026-07-22T16:30:00.000Z",
+        TransactionInformation: "Flight Deposit Booking",
+        Amount: { Amount: "450.00", Currency: "GBP" },
+        BankTransactionCode: { Code: "MerchantPayment", SubCode: "CardPayment" },
+        ProprietaryBankTransactionCode: { Code: "Purchase", Issuer: "CoreBank" },
+        Balance: { Type: "CLAV", Amount: { Amount: "2100.80", Currency: "GBP" }, CreditDebitIndicator: "Credit" },
+        MerchantDetails: { MerchantName: "British Airways", MerchantCategoryCode: "4511" },
+        CardInstrument: { CardSchemeName: "MasterCard", AuthorisationType: "3D Secure" },
+      },
+    ];
+  }
+
+  if (id.includes("f8b")) {
+    // Rainy Day transactions
+    return [
+      {
+        TransactionId: "6a648145c47905bfc3f19f8b_1",
+        AccountId: id,
+        TransactionReference: "Ref RD275834783913",
+        CreditDebitIndicator: "Credit",
+        Status: "PDNG",
+        BookingDateTime: "2026-07-25T09:26:29.438Z",
+        ValueDateTime: "2026-07-25T09:26:29.438Z",
+        TransactionInformation: "Monthly rent transfer",
+        Amount: { Amount: "357.78", Currency: "GBP" },
+        BankTransactionCode: { Code: "IssuedCreditTransfer", SubCode: "AutomaticTransfer" },
+        ProprietaryBankTransactionCode: { Code: "Transfer", Issuer: "CoreBank" },
+        Balance: { Type: "CLAV", Amount: { Amount: "4268.53", Currency: "GBP" }, CreditDebitIndicator: "Credit" },
+        MerchantDetails: { MerchantName: "Hintz, Mitchell and Boehm", MerchantCategoryCode: "1711" },
+        CardInstrument: { CardSchemeName: "MasterCard", AuthorisationType: "PIN" },
+      },
+    ];
+  }
+
+  // Default Bills transactions
+  return [
+    {
+      TransactionId: "6a648145c47905bfc3f19f90",
+      AccountId: id,
+      TransactionReference: "Ref 514012092412",
+      CreditDebitIndicator: "Debit",
+      Status: "PDNG",
+      BookingDateTime: "2026-07-25T06:55:38.237Z",
+      ValueDateTime: "2026-07-25T06:55:38.237Z",
+      TransactionInformation: "Paid the gas bill",
+      Amount: { Amount: "284.58", Currency: "GBP" },
+      BankTransactionCode: { Code: "IssuedCreditTransfer", SubCode: "AutomaticTransfer" },
+      ProprietaryBankTransactionCode: { Code: "Transfer", Issuer: "CoreBank" },
+      Balance: { Type: "CLAV", Amount: { Amount: "613.64", Currency: "GBP" }, CreditDebitIndicator: "Credit" },
+      MerchantDetails: { MerchantName: "Lubowitz, Krajcik and Olson", MerchantCategoryCode: "1711" },
+      CardInstrument: { CardSchemeName: "MasterCard", AuthorisationType: "PIN" },
+    },
+    {
+      TransactionId: "6a648145c47905bfc3f19f91",
+      AccountId: id,
+      TransactionReference: "Ref 090920347150",
+      CreditDebitIndicator: "Debit",
+      Status: "PDNG",
+      BookingDateTime: "2026-07-25T05:37:18.328Z",
+      ValueDateTime: "2026-07-25T05:37:18.328Z",
+      TransactionInformation: "Utility bill payment",
+      Amount: { Amount: "449.99", Currency: "GBP" },
+      BankTransactionCode: { Code: "IssuedCreditTransfer", SubCode: "AutomaticTransfer" },
+      ProprietaryBankTransactionCode: { Code: "Transfer", Issuer: "CoreBank" },
+      Balance: { Type: "CLAV", Amount: { Amount: "779.05", Currency: "GBP" }, CreditDebitIndicator: "Credit" },
+      MerchantDetails: { MerchantName: "Shanahan LLC", MerchantCategoryCode: "1711" },
+      CardInstrument: { CardSchemeName: "MasterCard", AuthorisationType: "PIN" },
+    },
+    {
+      TransactionId: "6a648145c47905bfc3f19f92",
+      AccountId: id,
+      TransactionReference: "Ref 494352222219",
+      CreditDebitIndicator: "Debit",
+      Status: "PDNG",
+      BookingDateTime: "2026-07-25T05:36:22.517Z",
+      ValueDateTime: "2026-07-25T05:36:22.517Z",
+      TransactionInformation: "Utility bill payment",
+      Amount: { Amount: "436.39", Currency: "GBP" },
+      BankTransactionCode: { Code: "IssuedCreditTransfer", SubCode: "AutomaticTransfer" },
+      ProprietaryBankTransactionCode: { Code: "Transfer", Issuer: "CoreBank" },
+      Balance: { Type: "CLAV", Amount: { Amount: "765.45", Currency: "GBP" }, CreditDebitIndicator: "Credit" },
+      MerchantDetails: { MerchantName: "Stiedemann, Spinka and Nolan", MerchantCategoryCode: "1711" },
+      CardInstrument: { CardSchemeName: "MasterCard", AuthorisationType: "PIN" },
+    },
+    {
+      TransactionId: "6a648145c47905bfc3f19f93",
+      AccountId: id,
+      TransactionReference: "Ref 573095832327",
+      CreditDebitIndicator: "Debit",
+      Status: "PDNG",
+      BookingDateTime: "2026-07-25T05:32:51.471Z",
+      ValueDateTime: "2026-07-25T05:32:51.471Z",
+      TransactionInformation: "Online subscription",
+      Amount: { Amount: "342.90", Currency: "GBP" },
+      BankTransactionCode: { Code: "IssuedCreditTransfer", SubCode: "AutomaticTransfer" },
+      ProprietaryBankTransactionCode: { Code: "Transfer", Issuer: "CoreBank" },
+      Balance: { Type: "CLAV", Amount: { Amount: "671.96", Currency: "GBP" }, CreditDebitIndicator: "Credit" },
+      MerchantDetails: { MerchantName: "Schowalter Group", MerchantCategoryCode: "1711" },
+      CardInstrument: { CardSchemeName: "MasterCard", AuthorisationType: "PIN" },
+    },
+    {
+      TransactionId: "6a648145c47905bfc3f19f94",
+      AccountId: id,
+      TransactionReference: "Ref 611024897057",
+      CreditDebitIndicator: "Debit",
+      Status: "PDNG",
+      BookingDateTime: "2026-07-24T09:30:55.667Z",
+      ValueDateTime: "2026-07-24T09:30:55.667Z",
+      TransactionInformation: "Monthly rent transfer",
+      Amount: { Amount: "339.12", Currency: "GBP" },
+      BankTransactionCode: { Code: "IssuedCreditTransfer", SubCode: "AutomaticTransfer" },
+      ProprietaryBankTransactionCode: { Code: "Transfer", Issuer: "CoreBank" },
+      Balance: { Type: "CLAV", Amount: { Amount: "668.18", Currency: "GBP" }, CreditDebitIndicator: "Credit" },
+      MerchantDetails: { MerchantName: "Kuhlman Inc", MerchantCategoryCode: "1711" },
+      CardInstrument: { CardSchemeName: "MasterCard", AuthorisationType: "PIN" },
+    },
+  ];
+}
+
+/* ---------------------------------------------------------------------------
+   Required Mappers
+--------------------------------------------------------------------------- */
+
+export function mapAccount(a) {
+  if (!a) return mapAccount(FALLBACK_ACCOUNTS_DATA[0]);
+  const sub = a.Account?.[0] ?? {};
+  return {
+    accountId: a.AccountId,
+    nickname: a.Nickname ?? "Account",
+    description: a.Description ?? "",
+    holder: sub.Name ?? a.Servicer?.Name ?? "Nivas Ganesan",
+    currency: a.Currency ?? "GBP",
+    category: a.AccountCategory ?? "Personal",
+    typeCode: a.AccountTypeCode ?? "CACC",
+    status: a.Status ?? "Enabled",
+    openingDate: a.OpeningDate ?? "",
+    identification: sub.Identification ?? "",
+    servicer: a.Servicer?.Name ?? "",
+  };
+}
+
+export function mapBalance(b) {
+  if (!b) return mapBalance(getAccountBalanceFallback(""));
+  const line = (t) => b.CreditLine?.find((c) => c.Type === t)?.Amount?.Amount;
+  return {
+    current: parseFloat(b.Amount?.Amount ?? 0),
+    available: parseFloat(line("Available") ?? 0),
+    preAgreed: parseFloat(line("Pre-Agreed") ?? 0),
+    totalValue: parseFloat(b.TotalValue?.Amount ?? 0),
+    local: { amount: parseFloat(b.LocalAmount?.Amount ?? 0), currency: b.LocalAmount?.Currency ?? "USD" },
+    currency: b.Amount?.Currency ?? "GBP",
+    asOf: b.DateTime ?? new Date().toISOString(),
+  };
+}
+
+export function mapTx(t) {
+  if (!t) return null;
+  return {
+    id: t.TransactionId,
+    reference: t.TransactionReference ?? "",
+    info: t.TransactionInformation ?? "",
+    merchant: t.MerchantDetails?.MerchantName ?? t.TransactionInformation ?? "Unknown",
+    mcc: t.MerchantDetails?.MerchantCategoryCode ?? "",
+    amount: parseFloat(t.Amount?.Amount ?? 0),
+    currency: t.Amount?.Currency ?? "GBP",
+    date: t.BookingDateTime ?? new Date().toISOString(),
+    valueDate: t.ValueDateTime ?? new Date().toISOString(),
+    indicator: t.CreditDebitIndicator,            // "Debit" | "Credit"
+    status: t.Status,                             // "PDNG" | "BOOK"
+    balanceAfter: parseFloat(t.Balance?.Amount?.Amount ?? 0),
+    card: t.CardInstrument?.CardSchemeName ?? "",
+    auth: t.CardInstrument?.AuthorisationType ?? "",
+    txnCode: `${t.BankTransactionCode?.Code ?? ""} / ${t.BankTransactionCode?.SubCode ?? ""}`,
+    propCode: `${t.ProprietaryBankTransactionCode?.Code ?? ""} · ${t.ProprietaryBankTransactionCode?.Issuer ?? ""}`,
+    purpose: t.PaymentPurposeCode ?? "",
+  };
+}
+
+export function enrich(txArr) {
+  return (txArr || []).filter(Boolean).map((t) => ({
+    ...t,
+    dir: t.indicator === "Credit" ? "in" : "out",
+    cat: categorize(t.info || ""),
+  }));
+}
+
+export const ACCOUNT = mapAccount(FALLBACK_ACCOUNTS_DATA[0]);
+export const BALANCE = mapBalance(getAccountBalanceFallback(FALLBACK_ACCOUNTS_DATA[0].AccountId));
+export const RAW_TX = enrich(getAccountTxFallback(FALLBACK_ACCOUNTS_DATA[0].AccountId).map(mapTx));
+
+/* ---------------------------------------------------------------------------
+   Formatters & Derivations
+--------------------------------------------------------------------------- */
+
 const GBP = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
 export function money(n) {
-  return GBP.format(n);
+  return GBP.format(n || 0);
 }
 export function moneyUSD(n) {
-  return USD.format(n);
+  return USD.format(n || 0);
 }
 export function fmtDate(iso) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
@@ -61,40 +524,36 @@ export function fmtDateFull(iso) {
 export function fmtTime(iso) {
   return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 }
-export function maskAccount(id) {
+export function maskAccount(id = "") {
+  if (!id || id.length < 6) return { sort: "68-13-07", last: id ? id.slice(-4) : "7936" };
   return { sort: `${id.slice(0, 2)}-${id.slice(2, 4)}-${id.slice(4, 6)}`, last: id.slice(-4) };
 }
 
-/* ---------------- classification (description-based; MCC is uniform 1711 in this data) ---------------- */
-export function categorize(info) {
+export function categorize(info = "") {
   const s = info.toLowerCase();
   if (s.includes("gas") || s.includes("utility")) return "Utilities";
   if (s.includes("subscription")) return "Subscriptions";
   if (s.includes("rent")) return "Housing";
-  if (s.includes("grocery") || s.includes("groceries")) return "Groceries";
-  if (s.includes("cash from") || s.includes("salary") || s.includes("payroll") || s.includes("refund")) return "Income";
+  if (s.includes("grocery") || s.includes("groceries") || s.includes("supermarket")) return "Groceries";
+  if (s.includes("cash from") || s.includes("salary") || s.includes("payroll") || s.includes("refund") || s.includes("interest") || s.includes("deposit")) return "Income";
   return "Other";
 }
 
-/* ---------------- enriched list (single rule used by every page) ---------------- */
 export function getTransactions() {
-  return RAW_TX.map((t) => ({
-    ...t,
-    dir: t.indicator === "Credit" ? "in" : "out",
-    cat: categorize(t.info),
-  }));
+  return enrich(getAccountTxFallback(FALLBACK_ACCOUNTS_DATA[0].AccountId).map(mapTx));
 }
 
 export function sumBy(list, predicate) {
-  return list.filter(predicate).reduce((s, t) => s + t.amount, 0);
+  return (list || []).filter(predicate).reduce((s, t) => s + t.amount, 0);
 }
 
-export function byCategory(list) {
+export function byCategory(list = []) {
   const map = {};
   list.forEach((t) => {
-    map[t.cat] = map[t.cat] || { name: t.cat, total: 0, count: 0 };
-    map[t.cat].total += t.amount;
-    map[t.cat].count += 1;
+    const c = t.cat || categorize(t.info);
+    map[c] = map[c] || { name: c, total: 0, count: 0 };
+    map[c].total += t.amount;
+    map[c].count += 1;
   });
   const total = list.reduce((s, t) => s + t.amount, 0) || 1;
   return Object.values(map)
@@ -102,23 +561,24 @@ export function byCategory(list) {
     .sort((a, b) => b.total - a.total);
 }
 
-export function byDay(list) {
+export function byDay(list = []) {
   const map = {};
   list.forEach((t) => {
-    const key = t.date.slice(0, 10);
-    map[key] = (map[key] || 0) + t.amount;
+    const key = (t.date || "").slice(0, 10);
+    if (key) map[key] = (map[key] || 0) + t.amount;
   });
   return Object.entries(map)
     .map(([date, total]) => ({ date, total }))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 }
 
-export function byMerchant(list) {
+export function byMerchant(list = []) {
   const map = {};
   list.forEach((t) => {
-    map[t.merchant] = map[t.merchant] || { name: t.merchant, total: 0, count: 0, cat: t.cat };
-    map[t.merchant].total += t.amount;
-    map[t.merchant].count += 1;
+    const m = t.merchant || "Unknown";
+    map[m] = map[m] || { name: m, total: 0, count: 0, cat: t.cat };
+    map[m].total += t.amount;
+    map[m].count += 1;
   });
   return Object.values(map).sort((a, b) => b.total - a.total);
 }
