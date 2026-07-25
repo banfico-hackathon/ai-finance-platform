@@ -37,9 +37,3 @@ logging:
   level:
     org.springframework.web.reactive.function.client: DEBUG
     reactor.netty.http.client: DEBUG
-bank:
-  api:
-    domain: obiebank-sbx.banfico.io
-    tenant: provider
-    client-id: corebank-spa
-    client-secret: corebank-spa-password
