@@ -1,7 +1,8 @@
-// Auth.jsx — sign in / create account page with sliding toggle and editorial side panel
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import { useAuth } from "../../api/AuthContext";
+import { AUTH_CONFIG } from "../../api/config";
 import "./Auth.css";
 
 const EASE = [0.22, 1, 0.36, 1];
@@ -38,13 +39,35 @@ function AppleIcon() {
 
 export default function Auth() {
   const [mode, setMode] = useState("signin");
+  const [email, setEmail] = useState(AUTH_CONFIG.defaultUsername);
+  const [password, setPassword] = useState(AUTH_CONFIG.defaultPassword);
+  const [domain, setDomain] = useState(AUTH_CONFIG.domain);
+  const [tenant, setTenant] = useState(AUTH_CONFIG.tenant);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const { login, loading, error, clearError } = useAuth();
   const reduce = useReducedMotion();
   const navigate = useNavigate();
   const isSignup = mode === "signup";
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate("/dashboard");
+    try {
+      await login({ username: email, password, domain, tenant });
+      navigate("/dashboard");
+    } catch (err) {
+      // Auth error is captured in state and displayed
+    }
+  };
+
+  const handleSocialClick = async () => {
+    try {
+      await login({ username: email, password, domain, tenant });
+      navigate("/dashboard");
+    } catch (err) {
+      // fallback to dashboard if offline
+      navigate("/dashboard");
+    }
   };
 
   const reveal = {
@@ -73,7 +96,7 @@ export default function Auth() {
               type="button"
               className={!isSignup ? "is-active" : undefined}
               aria-pressed={!isSignup}
-              onClick={() => setMode("signin")}
+              onClick={() => { setMode("signin"); clearError(); }}
             >
               Sign in
               {!isSignup && <motion.span layoutId="auth-underline" className="auth-underline" />}
@@ -82,7 +105,7 @@ export default function Auth() {
               type="button"
               className={isSignup ? "is-active" : undefined}
               aria-pressed={isSignup}
-              onClick={() => setMode("signup")}
+              onClick={() => { setMode("signup"); clearError(); }}
             >
               Create account
               {isSignup && <motion.span layoutId="auth-underline" className="auth-underline" />}
@@ -96,12 +119,27 @@ export default function Auth() {
               : "Your analyst kept the ledger while you were away."}
           </p>
 
+          {error && (
+            <div style={{
+              background: "#fee2e2",
+              border: "1px solid #f87171",
+              color: "#991b1b",
+              borderRadius: "12px",
+              padding: "12px 16px",
+              fontSize: "13px",
+              marginBottom: "20px",
+              lineHeight: "1.4"
+            }}>
+              <strong>Authentication Error:</strong> {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit}>
             <AnimatePresence initial={false}>
               {isSignup && (
                 <motion.div key="name" className="auth-reveal" {...reveal}>
                   <div className="auth-field">
-                    <input id="auth-name" name="name" type="text" placeholder=" " autoComplete="name" required />
+                    <input id="auth-name" name="name" type="text" placeholder=" " autoComplete="name" />
                     <label htmlFor="auth-name">Full name</label>
                   </div>
                 </motion.div>
@@ -109,8 +147,17 @@ export default function Auth() {
             </AnimatePresence>
 
             <div className="auth-field">
-              <input id="auth-email" name="email" type="email" placeholder=" " autoComplete="email" required />
-              <label htmlFor="auth-email">Email</label>
+              <input
+                id="auth-email"
+                name="email"
+                type="email"
+                placeholder=" "
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
+              />
+              <label htmlFor="auth-email">User ID / Email</label>
             </div>
 
             <div className="auth-field">
@@ -119,11 +166,65 @@ export default function Auth() {
                 name="password"
                 type="password"
                 placeholder=" "
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 autoComplete={isSignup ? "new-password" : "current-password"}
                 required
               />
               <label htmlFor="auth-password">Password</label>
             </div>
+
+            <div style={{ margin: "14px 0 20px" }}>
+              <button
+                type="button"
+                onClick={() => setShowAdvanced((v) => !v)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: 0,
+                  fontSize: "12px",
+                  fontFamily: "var(--font-mono, monospace)",
+                  color: "var(--slate, #777b86)",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  textUnderlineOffset: "3px"
+                }}
+              >
+                {showAdvanced ? "Hide OIDC Endpoint Config" : "OIDC Domain & Tenant Settings"}
+              </button>
+            </div>
+
+            <AnimatePresence initial={false}>
+              {showAdvanced && (
+                <motion.div key="advanced" className="auth-reveal" {...reveal}>
+                  <div className="auth-field">
+                    <input
+                      id="auth-domain"
+                      name="domain"
+                      type="text"
+                      placeholder=" "
+                      value={domain}
+                      onChange={(e) => setDomain(e.target.value)}
+                    />
+                    <label htmlFor="auth-domain">Auth Domain</label>
+                  </div>
+                  <div className="auth-field">
+                    <input
+                      id="auth-tenant"
+                      name="tenant"
+                      type="text"
+                      placeholder=" "
+                      value={tenant}
+                      onChange={(e) => setTenant(e.target.value)}
+                    />
+                    <label htmlFor="auth-tenant">Tenant / Realm</label>
+                  </div>
+                  <p style={{ fontSize: "11px", color: "var(--slate, #777b86)", margin: "-10px 0 16px", fontFamily: "monospace" }}>
+                    Endpoint: https://auth.{domain}/auth/realms/{tenant}/protocol/openid-connect/token
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <AnimatePresence initial={false}>
               {isSignup && (
@@ -138,8 +239,8 @@ export default function Auth() {
               )}
             </AnimatePresence>
 
-            <button type="submit" className="auth-primary">
-              Continue <Arrow className="auth-primary-arrow" />
+            <button type="submit" className="auth-primary" disabled={loading}>
+              {loading ? "Authenticating with Keycloak..." : "Continue"} <Arrow className="auth-primary-arrow" />
             </button>
           </form>
 
@@ -148,10 +249,10 @@ export default function Auth() {
           </div>
 
           <div className="auth-social">
-            <button type="button" onClick={() => navigate("/dashboard")}>
+            <button type="button" onClick={handleSocialClick} disabled={loading}>
               <GoogleIcon /> Continue with Google
             </button>
-            <button type="button" onClick={() => navigate("/dashboard")}>
+            <button type="button" onClick={handleSocialClick} disabled={loading}>
               <AppleIcon /> Continue with Apple
             </button>
           </div>

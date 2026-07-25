@@ -111,8 +111,8 @@
   transition: top 0.25s var(--ease), font-size 0.25s var(--ease), letter-spacing 0.25s var(--ease);
 }
 
-.auth-field input:focus + label,
-.auth-field input:not(:placeholder-shown) + label {
+.auth-field input:focus+label,
+.auth-field input:not(:placeholder-shown)+label {
   top: 0;
   font-family: var(--font-mono);
   font-size: 11px;
@@ -322,9 +322,11 @@
     grid-template-columns: 1fr;
     min-height: 0;
   }
+
   .auth-left {
     min-height: calc(100vh - 72px);
   }
+
   .auth-right {
     border-left: 0;
     border-top: 1px solid var(--rule);
