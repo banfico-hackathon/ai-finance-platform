@@ -9,10 +9,10 @@ const defaultAccountContext = {
   accounts: FALLBACK_ACCOUNTS_DATA.map(mapAccount),
   selectedAccountId: "6a62009ac47905bfc3f196cd",
   selectedAccount: mapAccount(FALLBACK_ACCOUNTS_DATA[0]),
-  setSelectedAccountId: () => {},
+  setSelectedAccountId: () => { },
   loading: false,
   error: null,
-  reloadAccounts: () => {},
+  reloadAccounts: () => { },
 };
 
 export function AccountProvider({ children }) {
