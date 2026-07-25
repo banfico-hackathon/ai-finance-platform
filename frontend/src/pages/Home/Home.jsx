@@ -190,6 +190,7 @@ export default function Home() {
   const reduce = useReducedMotion();
   const [openFaq, setOpenFaq] = useState(0);
   const [prompt, setPrompt] = useState("");
+  const [isCardsShuffled, setIsCardsShuffled] = useState(false);
 
   const rise = {
     hidden: { opacity: 0, y: reduce ? 0 : 16 },
@@ -473,8 +474,13 @@ export default function Home() {
             </motion.div>
 
             <motion.div
-              className="home-card-stack"
-              aria-hidden="true"
+              className={`home-card-stack ${isCardsShuffled ? "is-shuffled" : ""}`}
+              onMouseEnter={() => setIsCardsShuffled(true)}
+              onMouseLeave={() => setIsCardsShuffled(false)}
+              onClick={() => setIsCardsShuffled((prev) => !prev)}
+              role="button"
+              tabIndex={0}
+              aria-label="Interactive card stack - hover or tap to shuffle cards"
               initial={{ opacity: 0, y: reduce ? 0 : 24 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-80px" }}

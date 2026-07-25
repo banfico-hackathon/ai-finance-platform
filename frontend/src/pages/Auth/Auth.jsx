@@ -1,6 +1,6 @@
 // Auth.jsx — sign in / create account page with sliding toggle and editorial side panel
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import "./Auth.css";
 
@@ -39,7 +39,13 @@ function AppleIcon() {
 export default function Auth() {
   const [mode, setMode] = useState("signin");
   const reduce = useReducedMotion();
+  const navigate = useNavigate();
   const isSignup = mode === "signup";
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    navigate("/dashboard");
+  };
 
   const reveal = {
     initial: { height: 0, opacity: 0 },
@@ -90,7 +96,7 @@ export default function Auth() {
               : "Your analyst kept the ledger while you were away."}
           </p>
 
-          <form onSubmit={(e) => e.preventDefault()}>
+          <form onSubmit={handleSubmit}>
             <AnimatePresence initial={false}>
               {isSignup && (
                 <motion.div key="name" className="auth-reveal" {...reveal}>
@@ -142,10 +148,10 @@ export default function Auth() {
           </div>
 
           <div className="auth-social">
-            <button type="button">
+            <button type="button" onClick={() => navigate("/dashboard")}>
               <GoogleIcon /> Continue with Google
             </button>
-            <button type="button">
+            <button type="button" onClick={() => navigate("/dashboard")}>
               <AppleIcon /> Continue with Apple
             </button>
           </div>
