@@ -4,11 +4,19 @@
   <component name="MavenProjectsManager">
     <option name="originalFiles">
       <list>
+<<<<<<< HEAD
         <option value="$PROJECT_DIR$/discovery-service/pom.xml" />
       </list>
     </option>
   </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_21" default="true" project-jdk-name="21" project-jdk-type="JavaSDK">
+=======
+        <option value="$PROJECT_DIR$/extraction-service/pom.xml" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" project-jdk-name="homebrew-25 (2)" project-jdk-type="JavaSDK">
+>>>>>>> c66ddb4 (add docker compose file)
     <output url="file://$PROJECT_DIR$/out" />
   </component>
 </project>
