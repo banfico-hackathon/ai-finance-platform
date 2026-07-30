@@ -1,8 +1,8 @@
-AI Financial Platform
+# Banfico AI Financial Platform
 
 > An intelligent, open-banking financial ecosystem powered by Google Gemini 2.5 Flash, Ollama (`llama3.2`), and distributed microservices.
 
-this platform bridges the gap between complex banking ledgers and actionable financial decisions. Built for modern open-banking standards, Banfico pairs real-time **OBIE AISP v3.1** data with hybrid cloud/local LLM AI microservices to audit cashflow, detect spending anomalies, automate savings sweeps, and manage automated task workflows.
+Banfico bridges the gap between complex banking ledgers and actionable financial decisions. Built for modern open-banking standards, Banfico pairs real-time **OBIE AISP v3.1** data with hybrid cloud/local LLM AI microservices to audit cashflow, detect spending anomalies, automate savings sweeps, and manage automated task workflows.
 
 ---
 
@@ -135,3 +135,4 @@ Banfico is a financial technology demonstration platform. Banking services and d
 ## 📄 License
 
 This project is open source and available under the MIT License.
+

@@ -45,6 +45,11 @@ export default function Auth() {
   const [tenant, setTenant] = useState(AUTH_CONFIG.tenant);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Terms & Conditions agreement state before login
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [termsError, setTermsError] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+
   const { login, loading, error, clearError } = useAuth();
   const reduce = useReducedMotion();
   const navigate = useNavigate();
@@ -52,6 +57,10 @@ export default function Auth() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!agreedToTerms) {
+      setTermsError(true);
+      return;
+    }
     try {
       await login({ username: email, password, domain, tenant });
       navigate("/dashboard");
@@ -61,6 +70,10 @@ export default function Auth() {
   };
 
   const handleSocialClick = async () => {
+    if (!agreedToTerms) {
+      setTermsError(true);
+      return;
+    }
     try {
       await login({ username: email, password, domain, tenant });
       navigate("/dashboard");
@@ -68,6 +81,12 @@ export default function Auth() {
       // fallback to dashboard if offline
       navigate("/dashboard");
     }
+  };
+
+  const handleAcceptTermsModal = () => {
+    setAgreedToTerms(true);
+    setTermsError(false);
+    setShowTermsModal(false);
   };
 
   const reveal = {
@@ -96,7 +115,7 @@ export default function Auth() {
               type="button"
               className={!isSignup ? "is-active" : undefined}
               aria-pressed={!isSignup}
-              onClick={() => { setMode("signin"); clearError(); }}
+              onClick={() => { setMode("signin"); clearError(); setTermsError(false); }}
             >
               Sign in
               {!isSignup && <motion.span layoutId="auth-underline" className="auth-underline" />}
@@ -105,7 +124,7 @@ export default function Auth() {
               type="button"
               className={isSignup ? "is-active" : undefined}
               aria-pressed={isSignup}
-              onClick={() => { setMode("signup"); clearError(); }}
+              onClick={() => { setMode("signup"); clearError(); setTermsError(false); }}
             >
               Create account
               {isSignup && <motion.span layoutId="auth-underline" className="auth-underline" />}
@@ -131,6 +150,21 @@ export default function Auth() {
               lineHeight: "1.4"
             }}>
               <strong>Authentication Error:</strong> {error}
+            </div>
+          )}
+
+          {termsError && (
+            <div style={{
+              background: "#fff7ed",
+              border: "1px solid #fdba74",
+              color: "#c2410c",
+              borderRadius: "12px",
+              padding: "12px 16px",
+              fontSize: "13px",
+              marginBottom: "20px",
+              lineHeight: "1.4"
+            }}>
+              ⚠️ <strong>Action Required:</strong> You must check and agree to the <strong>Terms & Conditions</strong> below before logging in or creating an account.
             </div>
           )}
 
@@ -174,7 +208,7 @@ export default function Auth() {
               <label htmlFor="auth-password">Password</label>
             </div>
 
-            <div style={{ margin: "14px 0 20px" }}>
+            <div style={{ margin: "14px 0 16px" }}>
               <button
                 type="button"
                 onClick={() => setShowAdvanced((v) => !v)}
@@ -226,18 +260,42 @@ export default function Auth() {
               )}
             </AnimatePresence>
 
-            <AnimatePresence initial={false}>
-              {isSignup && (
-                <motion.div key="agree" className="auth-reveal" {...reveal}>
-                  <div className="auth-agree">
-                    <input id="auth-agree" name="agree" type="checkbox" required />
-                    <label htmlFor="auth-agree">
-                      I agree to the <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.
-                    </label>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* MANDATORY TERMS & CONDITIONS CHECKBOX BEFORE LOGIN / SIGNUP */}
+            <div className={`auth-agree ${termsError ? "has-error" : ""}`}>
+              <input
+                id="auth-agree"
+                name="agree"
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => {
+                  setAgreedToTerms(e.target.checked);
+                  if (e.target.checked) setTermsError(false);
+                }}
+              />
+              <label htmlFor="auth-agree">
+                I have read and agree to Banfico's{" "}
+                <button
+                  type="button"
+                  className="auth-terms-link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowTermsModal(true);
+                  }}
+                >
+                  Terms & Conditions
+                </button>{" "}
+                and <button
+                  type="button"
+                  className="auth-terms-link"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowTermsModal(true);
+                  }}
+                >
+                  Privacy Policy
+                </button>.
+              </label>
+            </div>
 
             <button type="submit" className="auth-primary" disabled={loading}>
               {loading ? "Authenticating with Keycloak..." : "Continue"} <Arrow className="auth-primary-arrow" />
@@ -260,6 +318,66 @@ export default function Auth() {
           <p className="auth-fineprint">Bank-grade encryption. FDIC insured partners.</p>
         </motion.div>
       </section>
+
+      {/* TERMS & CONDITIONS MODAL POPOVER */}
+      <AnimatePresence>
+        {showTermsModal && (
+          <motion.div
+            className="auth-terms-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowTermsModal(false)}
+          >
+            <motion.div
+              className="auth-terms-dialog"
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="auth-terms-header">
+                <h2>Banfico Terms & Conditions</h2>
+                <button
+                  type="button"
+                  className="auth-terms-close"
+                  onClick={() => setShowTermsModal(false)}
+                  aria-label="Close modal"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="auth-terms-body">
+                <p><strong>Effective Date:</strong> July 25, 2026</p>
+                <p>Please read these Terms and Conditions ("Terms") carefully before accessing or using the Banfico AI Financial Platform.</p>
+
+                <h3>1. Account Registration & Authentication</h3>
+                <p>By creating an account or logging in, you certify that you are at least 18 years old and authorized to access bank accounts registered under your credentials. Keycloak OIDC single sign-on services protect your identity with bank-grade encryption protocols.</p>
+
+                <h3>2. AI Financial Assistant & Automated Actions</h3>
+                <p>Banfico provides automated financial assistance via Spring AI and Ollama MCP tools. Suggestions provided by the AI assistant are for informational and task automation purposes (e.g., todo management, spend classification) and do not constitute formal investment advice.</p>
+
+                <h3>3. Open Banking & Data Privacy</h3>
+                <p>We connect to financial institutions via secure Open Banking APIs (OBIE compliant). Your bank tokens are stored securely in local session memory and encrypted cache. We never sell your personal financial data to third-party advertisers.</p>
+
+                <h3>4. FDIC Insurance Disclosures</h3>
+                <p>Banfico is a financial technology company, not a chartered bank. Banking services and FDIC insurance coverage (up to $250,000) are provided by our partner banks.</p>
+              </div>
+
+              <div className="auth-terms-footer">
+                <button type="button" className="auth-terms-decline" onClick={() => setShowTermsModal(false)}>
+                  Close
+                </button>
+                <button type="button" className="auth-terms-accept" onClick={handleAcceptTermsModal}>
+                  I Agree & Accept
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <aside className="auth-right">
         <motion.div

@@ -1,4 +1,5 @@
 // Home.jsx — Banfico landing page in the Steep editorial style: hero collage, cashflow forecast, card visual, insights, count-up stats, FAQ, footer
+
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence, useInView, useReducedMotion } from "motion/react";

@@ -5,7 +5,9 @@ import ReactApexChart from "react-apexcharts";
 import DashboardNav from "../../../components/DashboardNav";
 import { useAccount } from "../../../api/AccountContext";
 import { fetchAccount, fetchBalance, fetchTransactions } from "../../../api/obieApi";
+import { fetchSpendingRecommendations } from "../../../api/recommendationApi";
 import { mapAccount, mapBalance, money, moneyUSD, maskAccount, categorize, getTransactions } from "../Banking Data/Bankingdata";
+
 import "./Dashboard.css";
 
 const EASE = [0.22, 1, 0.36, 1];
@@ -121,6 +123,8 @@ const QUICK = [
     { label: "Move money", icon: <><path d="M4 8h13l-3-3M20 16H7l3 3" strokeLinecap="round" strokeLinejoin="round" /></> },
 ];
 
+const CHAT_ENDPOINT = "http://localhost:8080/api/chat";
+
 export default function Dashboard() {
     const reduce = useReducedMotion();
     const { selectedAccountId, selectedAccount, accounts, setSelectedAccountId } = useAccount();
@@ -133,6 +137,17 @@ export default function Dashboard() {
 
     const [tab, setTab] = useState("all");
     const [query, setQuery] = useState("");
+    const [chatOpen, setChatOpen] = useState(false);
+    const [chatInput, setChatInput] = useState("");
+    const [chatLoading, setChatLoading] = useState(false);
+    const [chatError, setChatError] = useState(null);
+    const [chatMessages, setChatMessages] = useState([
+        {
+            role: "assistant",
+            text: "Ask me to add, list, update, complete, or delete todos.",
+        },
+    ]);
+
 
     const loadData = async () => {
         if (!selectedAccountId) return;
@@ -158,16 +173,26 @@ export default function Dashboard() {
         loadData();
     }, [selectedAccountId]);
 
-    useEffect(() => {
-        if (selectedAccount) {
-            setAccount(selectedAccount);
-        }
-    }, [selectedAccount]);
+    const [timeframe, setTimeframe] = useState("month"); // 'week' | 'month' | 'quarter' | 'year'
 
     const derived = useMemo(() => {
-        const tx = txList && txList.length > 0 ? txList : getTransactions();
-        const out = tx.filter((t) => t.dir === "out" || t.indicator === "Debit");
-        const inc = tx.filter((t) => t.dir === "in" || t.indicator === "Credit");
+        const rawTx = txList && txList.length > 0 ? txList : getTransactions();
+        const now = new Date();
+        
+        let daysLimit = 30;
+        if (timeframe === "week") daysLimit = 7;
+        if (timeframe === "month") daysLimit = 30;
+        if (timeframe === "quarter") daysLimit = 90;
+        if (timeframe === "year") daysLimit = 365;
+
+        const cutoff = new Date(now.getTime() - daysLimit * 24 * 60 * 60 * 1000);
+        
+        // Filter transactions within selected timeframe (or fallback to all if range is small)
+        const filteredByDate = rawTx.filter((t) => new Date(t.date || Date.now()) >= cutoff);
+        const activeTx = filteredByDate.length > 0 ? filteredByDate : rawTx;
+
+        const out = activeTx.filter((t) => t.dir === "out" || t.indicator === "Debit");
+        const inc = activeTx.filter((t) => t.dir === "in" || t.indicator === "Credit");
         const totalOut = out.reduce((s, t) => s + t.amount, 0);
         const totalIn = inc.reduce((s, t) => s + t.amount, 0);
 
@@ -182,11 +207,40 @@ export default function Dashboard() {
             .map(([name, v]) => ({ name, total: v.total, count: v.count, pct: Math.round((v.total / (totalOut || 1)) * 100) }))
             .sort((a, b) => b.total - a.total);
 
-        const trend = [...tx].sort((a, b) => new Date(a.date) - new Date(b.date)).map((t) => t.balanceAfter || t.amount);
-        const pendingCount = tx.filter((t) => t.status === "PDNG").length;
+        const trend = [...activeTx].sort((a, b) => new Date(a.date) - new Date(b.date)).map((t) => t.balanceAfter || t.amount);
+        const pendingCount = activeTx.filter((t) => t.status === "PDNG").length;
 
-        return { tx, out, inc, totalOut, totalIn, cats, trend, pendingCount };
-    }, [txList]);
+        return { tx: activeTx, out, inc, totalOut, totalIn, cats, trend, pendingCount, daysLimit };
+    }, [txList, timeframe]);
+
+    const [recommendations, setRecommendations] = useState([]);
+    const [recLoading, setRecLoading] = useState(false);
+
+    const loadRecommendations = async () => {
+        setRecLoading(true);
+        try {
+            const tfLabel = timeframe === "week" ? "Last 7 Days" : timeframe === "month" ? "This Month (Last 30 Days)" : timeframe === "quarter" ? "Last 90 Days" : "Year to Date";
+            const data = await fetchSpendingRecommendations({
+                timeframe: tfLabel,
+                totalOut: derived.totalOut,
+                totalIn: derived.totalIn,
+                categories: derived.cats,
+            });
+            setRecommendations(data || []);
+        } catch (err) {
+            console.warn("Failed to load AI recommendations:", err);
+        } finally {
+            setRecLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (derived.cats && derived.cats.length > 0) {
+            loadRecommendations();
+        }
+    }, [derived.cats.length, derived.totalOut, timeframe]);
+
+
 
     const acct = maskAccount(account.identification);
     const trendPath = buildArea(derived.trend, 520, 150, 14);
@@ -207,6 +261,8 @@ export default function Dashboard() {
     const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.05 } } };
 
     return (
+
+
         <div className="dash">
             <DashboardNav user={{ name: account.holder || "Nivas Ganesan", initials: "NG", email: "nivas@banfico.io" }} active="Overview" />
 
@@ -257,6 +313,28 @@ export default function Dashboard() {
                         </div>
                     </motion.div>
                 </motion.header>
+
+                {/* ===== TIMEFRAME SELECTOR BAR ===== */}
+                <motion.div className="dash-timeframe-bar" variants={rise} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                    <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--slate)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Timeframe:</span>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {[
+                            { key: "week", label: "This Week (7d)" },
+                            { key: "month", label: "This Month (30d)" },
+                            { key: "quarter", label: "Last 90 Days" },
+                            { key: "year", label: "Year to Date" },
+                        ].map((item) => (
+                            <button
+                                key={item.key}
+                                type="button"
+                                className={`dash-tab ${timeframe === item.key ? "is-active" : ""}`}
+                                onClick={() => setTimeframe(item.key)}
+                            >
+                                {item.label}
+                            </button>
+                        ))}
+                    </div>
+                </motion.div>
 
                 {error && (
                     <div style={{ background: "#faecea", border: "1px solid #f4b78a", color: "#7a3e1b", padding: "12px 18px", borderRadius: 12, marginBottom: 24, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -321,7 +399,9 @@ export default function Dashboard() {
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 17L17 7M17 7H9M17 7v8" strokeLinecap="round" strokeLinejoin="round" /></svg>
                                 </div>
                                 <div>
-                                    <p className="dash-stat-label">Money out · this week</p>
+                                    <p className="dash-stat-label">
+                                        Money out · {timeframe === "week" ? "this week" : timeframe === "month" ? "this month" : timeframe === "quarter" ? "last 90d" : "YTD"}
+                                    </p>
                                     <p className="dash-stat-num"><CountUp value={derived.totalOut} /></p>
                                     <p className="dash-stat-meta">{derived.out.length} payments</p>
                                 </div>
@@ -334,13 +414,16 @@ export default function Dashboard() {
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 7L7 17M7 17h8M7 17V9" strokeLinecap="round" strokeLinejoin="round" /></svg>
                                 </div>
                                 <div>
-                                    <p className="dash-stat-label">Money in · this week</p>
+                                    <p className="dash-stat-label">
+                                        Money in · {timeframe === "week" ? "this week" : timeframe === "month" ? "this month" : timeframe === "quarter" ? "last 90d" : "YTD"}
+                                    </p>
                                     <p className="dash-stat-num"><CountUp value={derived.totalIn} /></p>
                                     <p className="dash-stat-meta">{derived.inc.length} deposit</p>
                                 </div>
                             </div>
                             <MiniApexChart seriesData={derived.inc.map((t) => t.amount)} color="#0f7a55" />
                         </div>
+
                         <div className="dash-stat-card">
                             <div className="dash-stat-main">
                                 <div className="dash-stat-ico" aria-hidden="true">
@@ -375,7 +458,10 @@ export default function Dashboard() {
                     <motion.div className="dash-card" variants={rise} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-60px" }}>
                         <div className="dash-card-head">
                             <h2>Spending by category</h2>
-                            <span className="dash-card-sub">This statement period</span>
+                            <span className="dash-card-sub">
+                                {timeframe === "week" ? "Last 7 days" : timeframe === "month" ? "This month (last 30 days)" : timeframe === "quarter" ? "Last 90 days" : "Year to date"}
+                            </span>
+
                         </div>
                         <div className="dash-cat-list">
                             {derived.cats.map((c) => (
@@ -440,7 +526,66 @@ export default function Dashboard() {
                         </div>
                     </motion.div>
                 </section>
+
+                {/* ===== AI SPENDING RECOMMENDATIONS ===== */}
+                <motion.section 
+                    className="dash-recommendations" 
+                    variants={rise} 
+                    initial="hidden" 
+                    whileInView="visible" 
+                    viewport={{ once: true, margin: "-60px" }}
+                >
+                    <div className="dash-rec-head">
+                        <div>
+                            <div className="dash-rec-badge">
+                                <span className="dash-rec-spark">✦</span> AI Financial Insights
+                            </div>
+                            <h2>Personalized Recommendations</h2>
+                            <p className="dash-card-sub">Powered by Google Gemini 2.5 Flash & Spending Analysis</p>
+                        </div>
+                        <button 
+                            type="button" 
+                            className="dash-rec-refresh"
+                            onClick={loadRecommendations}
+                            disabled={recLoading}
+                        >
+                            {recLoading ? "Analyzing..." : "Refresh Insights ↻"}
+                        </button>
+                    </div>
+
+                    <div className="dash-rec-grid">
+                        {recLoading ? (
+                            <div className="dash-rec-loading">
+                                <p>Analyzing transactions & generating insights with Gemini API...</p>
+                            </div>
+                        ) : recommendations.length === 0 ? (
+                            <div className="dash-rec-loading">
+                                <p>No recommendations available for this statement period.</p>
+                            </div>
+                        ) : (
+                            recommendations.map((rec) => (
+                                <div key={rec.id} className={`dash-rec-card ${rec.type}`}>
+                                    <div className="dash-rec-top">
+                                        <span className={`dash-chip ${rec.type === "vault" ? "dash-chip-mint" : "dash-chip-peach"}`}>
+                                            {rec.category}
+                                        </span>
+                                        <span className="dash-rec-impact">{rec.impact}</span>
+                                    </div>
+                                    <h3 className="dash-rec-title">{rec.title}</h3>
+                                    <p className="dash-rec-summary">{rec.summary}</p>
+                                    <button type="button" className="dash-rec-action">
+                                        {rec.actionText || "Take Action"} →
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </motion.section>
             </main>
         </div>
     );
 }
+
+
+
+

@@ -478,10 +478,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-
-    .txns *,
-    .txns *::before,
-    .txns *::after {
+    .txns *, .txns *::before, .txns *::after {
         transition-duration: 0.001ms !important;
         animation-duration: 0.001ms !important;
     }

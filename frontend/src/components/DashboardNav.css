@@ -14,9 +14,10 @@
   --ash: #979799;
   --smoke: #a3a6af;
   --peach: #fbe1d1;
+  --peach-deep: #e07a5f;
   --peach-line: #f4b78a;
   --sienna: #5d2a1a;
-  --mint: #d1fae5;
+  --mint: #dff3ea;
   --mint-deep: #0f7a55;
   --rule: #eceae7;
   --display: "Newsreader", Georgia, serif;
@@ -24,20 +25,20 @@
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --pad: clamp(16px, 4vw, 40px);
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --nav-shadow: 0 4px 20px -6px rgba(23, 25, 28, 0.05);
 
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: saturate(150%) blur(10px);
+  background: var(--paper);
   border-bottom: 1px solid var(--rule);
   font-family: var(--body);
   color: var(--ink);
-  transition: box-shadow 0.3s var(--ease);
+  transition: box-shadow 0.25s var(--ease);
 }
 
 .dashnav.scrolled {
-  box-shadow: 0 1px 0 rgba(20, 17, 15, 0.04), 0 10px 24px -18px rgba(20, 17, 15, 0.35);
+  box-shadow: var(--nav-shadow);
 }
 
 .dashnav *,
@@ -57,49 +58,49 @@
   padding: 0;
 }
 
-.dashnav svg {
-  display: block;
+.dashnav button {
+  font: inherit;
 }
 
 .dashnav-inner {
   max-width: 1360px;
   margin: 0 auto;
-  padding-inline: var(--pad);
+  padding: 0 var(--pad);
   height: 64px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 24px;
 }
 
-/* left */
+/* left — mark */
 .dashnav-left {
   display: flex;
   align-items: center;
-  gap: 14px;
-  flex-shrink: 0;
+  gap: 12px;
 }
 
 .dashnav-mark {
   font-family: var(--display);
+  font-weight: 400;
   font-size: 23px;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  line-height: 1;
   display: inline-flex;
   align-items: baseline;
-  line-height: 1;
 }
 
 .dashnav-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--peach-line);
-  margin-left: 2px;
+  background: var(--peach-deep);
+  margin-left: 3px;
   display: inline-block;
 }
 
 .dashnav-sep {
   width: 1px;
-  height: 22px;
+  height: 16px;
   background: var(--rule);
 }
 
@@ -109,27 +110,25 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--slate);
-  padding: 4px 9px;
-  border: 1px solid var(--rule);
+  background: var(--mist);
+  padding: 3px 8px;
   border-radius: 9999px;
 }
 
-/* center */
+/* center — links */
 .dashnav-links {
   flex: 1;
-  display: flex;
-  justify-content: center;
 }
 
 .dashnav-links ul {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
 }
 
 .dashnav-links a {
-  position: relative;
-  display: block;
-  padding: 8px 14px;
+  display: inline-block;
+  padding: 7px 14px;
   font-size: 14px;
   font-weight: 450;
   color: var(--slate);
@@ -145,25 +144,14 @@
 .dashnav-links a.is-active {
   color: var(--ink);
   font-weight: 500;
+  background: var(--mist);
 }
 
-.dashnav-links a.is-active::after {
-  content: "";
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: -2px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--ink);
-}
-
-/* right */
+/* right — tools */
 .dashnav-right {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+  gap: 10px;
 }
 
 .dashnav-search {
@@ -175,14 +163,15 @@
   border-radius: 9999px;
   padding: 0 14px;
   height: 38px;
-  width: 240px;
   color: var(--slate);
-  transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
+  width: 220px;
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease), width 0.25s var(--ease);
 }
 
 .dashnav-search:focus-within {
   background: var(--paper);
   border-color: var(--ink);
+  width: 260px;
 }
 
 .dashnav-search input {
@@ -199,18 +188,19 @@
   color: var(--smoke);
 }
 
+/* icon button */
 .dashnav-icon {
-  position: relative;
   width: 38px;
   height: 38px;
   border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--ink);
-  background: none;
-  border: 0;
   cursor: pointer;
+  position: relative;
   transition: background 0.2s var(--ease);
 }
 
@@ -220,24 +210,25 @@
 
 .dashnav-badge {
   position: absolute;
-  top: 8px;
+  top: 9px;
   right: 9px;
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--peach-line);
-  border: 1.5px solid var(--paper);
+  background: var(--peach-deep);
+  box-shadow: 0 0 0 2px var(--paper);
 }
 
+/* profile button */
 .dashnav-profile {
   display: flex;
   align-items: center;
   gap: 9px;
-  background: none;
+  background: transparent;
   border: 0;
-  cursor: pointer;
-  padding: 5px 10px 5px 5px;
+  padding: 4px 6px 4px 4px;
   border-radius: 9999px;
+  cursor: pointer;
   transition: background 0.2s var(--ease);
 }
 
@@ -246,14 +237,14 @@
 }
 
 .dashnav-avatar {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--ink);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -261,14 +252,15 @@
 }
 
 .dashnav-avatar.lg {
-  width: 42px;
-  height: 42px;
-  font-size: 15px;
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
 }
 
 .dashnav-name {
   font-size: 14px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .dashnav-chev {
@@ -280,26 +272,22 @@
   transform: rotate(180deg);
 }
 
-/* popovers */
+/* dropdown popover */
 .dashnav-pop-wrap {
   position: relative;
 }
 
 .dashnav-pop {
   position: absolute;
-  top: calc(100% + 12px);
+  top: calc(100% + 10px);
   right: 0;
+  z-index: 120;
   background: var(--paper);
   border: 1px solid var(--rule);
   border-radius: 16px;
-  box-shadow: 0 0 0 1px rgba(4, 23, 43, 0.04), 0 18px 44px -12px rgba(20, 17, 15, 0.28);
+  box-shadow: 0 12px 32px -8px rgba(23, 25, 28, 0.14);
   padding: 8px;
-  transform-origin: top right;
-  z-index: 20;
-}
-
-.dashnav-pop-menu {
-  width: 240px;
+  min-width: 220px;
 }
 
 .dashnav-menu-id {

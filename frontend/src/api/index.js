@@ -5,3 +5,4 @@ export * from "./client";
 export * from "./AuthContext";
 export * from "./AccountContext";
 export * from "./obieApi";
+export * from "./chatApi";

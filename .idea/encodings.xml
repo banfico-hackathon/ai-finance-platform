@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Encoding">
-<<<<<<< HEAD
+    <file url="file://$PROJECT_DIR$/ai-insights-service/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/api-gateway/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/discovery-service/src/main/java" charset="UTF-8" />
-=======
-    <file url="file://$PROJECT_DIR$/extraction-service/src/main/java" charset="UTF-8" />
->>>>>>> c66ddb4 (add docker compose file)
+    <file url="file://$PROJECT_DIR$/mcpdo-main/src/main/java" charset="UTF-8" />
   </component>
 </project>
